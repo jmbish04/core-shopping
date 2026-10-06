@@ -159,15 +159,15 @@
   "kv_namespaces": [
     {
       "binding": "SESSIONS",
-      "id": "f47ec3ba218b4613b96258047f21250a",
+      "id": "30a8efa5434d4312b45d24c7d9058f7b",
       "remote": true,
     },
   ],
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "core-template-cf-reui",
-      "database_id": "c1452c1a-8dde-4e87-9258-f6a40f315e11",
+      "database_name": "core-shopping",
+      "database_id": "5a27bba0-5bb5-439a-a56b-67c7e073d5d2",
       "migrations_dir": "drizzle",
     },
   ],
