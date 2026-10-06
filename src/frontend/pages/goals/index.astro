@@ -1,0 +1,21 @@
+---
+/**
+ * Viewport 2: Goals & Rules Matrix (/goals)
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { GoalsView } from "@/components/shopping/goals-view";
+---
+
+<BaseLayout
+  title="Goals & Rules"
+  description="System prompts, emergency triggers, hotel whitelists/blacklists, and loyalty points ratios."
+>
+  <PageBody>
+    <PageToolbar
+      title="Experiential Goals & Rule Engine"
+      description="Configure AI shopping directives, 'Break the Rules' emergency buy triggers, and hotel cleanliness standards."
+    />
+    <GoalsView client:load />
+  </PageBody>
+</BaseLayout>

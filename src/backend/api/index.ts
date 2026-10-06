@@ -39,6 +39,8 @@ import { notificationsRouter } from "./routes/notifications";
 import { projectsRouter } from "./routes/projects";
 import { seedRouter } from "./routes/seed";
 import { settingsRouter } from "./routes/settings";
+import { shoppingRouter } from "./routes/shopping";
+import { mcpRouter } from "./routes/mcp";
 import { taskDetailRouter } from "./routes/task-detail";
 import { taskHierarchyRouter } from "./routes/task-hierarchy";
 import { tasksRouter } from "./routes/tasks";
@@ -96,7 +98,7 @@ app.get("/api/ping", (c) => c.json({ status: "ok", timestamp: Date.now() }));
 app.doc("/api/openapi.json", {
   openapi: "3.1.0",
   info: {
-    title: "CFW Astro shadcn Agents Template",
+    title: "Autonomous Experiential Shopper & Concierge API",
     version: "1.0.0",
   },
 });
@@ -106,11 +108,6 @@ app.get("/api/swagger", swaggerUI({ url: "/api/openapi.json" }));
 // ---------------------------------------------------------------------------
 // Auth middleware
 // ---------------------------------------------------------------------------
-//
-// Only the admin surface is gated behind the signed session cookie. The
-// showcase feature APIs (projects, tasks, stats, settings, notifications,
-// dashboard) are intentionally open so the template runs end-to-end out of the
-// box. Tighten this to `/api/*` once you wire real per-user auth.
 app.use("/api/admin/*", authMiddleware);
 
 // ---------------------------------------------------------------------------
@@ -123,17 +120,13 @@ app.route("/api/config", configRouter);
 app.route("/api/admin", adminRouter);
 app.route("/api/docs", docsRouter);
 
-// Feature APIs (open — see auth note above)
+// Feature APIs
 app.route("/api/projects", projectsRouter);
 app.route("/api/tasks", tasksRouter);
-// Comments / Subtasks / Attachments for a single task — mounted alongside
-// tasksRouter under the same base; its paths are all `/{id}/…` sub-resources.
 app.route("/api/tasks", taskDetailRouter);
-// Parent/child (subtask) navigation — GET /{id}/children, GET /{id}/ancestors.
 app.route("/api/tasks", taskHierarchyRouter);
 app.route("/api/team-notes", teamNotesRouter);
 app.route("/api/threads", threadsRouter);
-// Canvas document for a thread — same base, all paths are `/{id}/document…`.
 app.route("/api/threads", chatDocumentsRouter);
 app.route("/api/chat", chatRouter);
 app.route("/api/settings", settingsRouter);
@@ -145,6 +138,10 @@ app.route("/api/inbox", inboxRouter);
 app.route("/api/files", filesRouter);
 app.route("/api/seed", seedRouter);
 
+// Colby-Maestro Shopping & MCP Routers
+app.route("/api/shopping", shoppingRouter);
+app.route("/api/mcp/v1", mcpRouter);
+
 app.route("/api/__client-error", clientErrorRouter);
 
 // ---------------------------------------------------------------------------
@@ -154,7 +151,7 @@ app.route("/api/__client-error", clientErrorRouter);
 app.doc("/openapi.json", {
   openapi: "3.1.0",
   info: {
-    title: "CFW Astro shadcn Agents Template",
+    title: "Autonomous Experiential Shopper & Concierge API",
     version: "1.0.0",
   },
 });

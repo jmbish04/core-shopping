@@ -1,0 +1,21 @@
+---
+/**
+ * Viewport 5: Silent Price Radar & Wishlist (/radar)
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { SilentRadarView } from "@/components/shopping/silent-radar-view";
+---
+
+<BaseLayout
+  title="Silent Price Radar"
+  description="Zero-spam background tracking for conflict-vetoed proposals with historical price delta logs."
+>
+  <PageBody>
+    <PageToolbar
+      title="Silent Price Radar & Wishlist"
+      description="Background tracking for schedule-vetoed events without spamming alerts unless threshold price drops occur."
+    />
+    <SilentRadarView client:load />
+  </PageBody>
+</BaseLayout>

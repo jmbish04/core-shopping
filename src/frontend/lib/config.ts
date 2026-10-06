@@ -13,7 +13,10 @@ import {
   BookOpenIcon,
   BotIcon,
   BracesIcon,
+  BrainCircuitIcon,
   ChartColumnIcon,
+  CompassIcon,
+  EyeIcon,
   FilesIcon,
   FlaskConicalIcon,
   FolderKanbanIcon,
@@ -23,7 +26,10 @@ import {
   LayoutDashboardIcon,
   ListChecksIcon,
   NotebookPenIcon,
+  RadioIcon,
   SettingsIcon,
+  SparklesIcon,
+  TargetIcon,
   WrenchIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -41,18 +47,17 @@ export type NavItem = {
 export type NavGroup = { label: string; items: NavItem[] };
 
 export const siteConfig = {
-  name: "Cloudflare Edge Showcase",
-  shortName: "Edge Showcase",
+  name: "Colby Experiential Shopper & Concierge",
+  shortName: "Colby Concierge",
   description:
-    "Cloudflare Worker template: Astro + React on ReUI Pro blocks, D1 via Hono, AI chat through the core-guardian service binding",
+    "Autonomous Experiential Shopper & Concierge: scheduled AI routines, turnkey itineraries, HITL swiping, and MCP tools on Cloudflare Workers",
   url: "https://example.com",
   links: { github: "https://github.com/jmbish04/core-template-cfw-assets-astro-shadcn" },
 };
 
 /**
  * The twelve AI chat surfaces, each a real ReUI Pro `ai-chat-*` block wired to
- * core-guardian and the D1 thread store. Exported on its own because the
- * `/chat` gallery page renders the same list as cards.
+ * core-guardian and the D1 thread store.
  */
 export const chatSurfaces: Array<NavChild & { block: string }> = [
   { href: "/chat/copilot", label: "Copilot", block: "ai-chat-1", description: "Streaming transcript with a recent-chats rail." },
@@ -70,6 +75,17 @@ export const chatSurfaces: Array<NavChild & { block: string }> = [
 ];
 
 export const navGroups: NavGroup[] = [
+  {
+    label: "Concierge & Shopper",
+    items: [
+      { href: "/ops", label: "Mission Control", icon: RadioIcon },
+      { href: "/goals", label: "Goals & Rules", icon: TargetIcon },
+      { href: "/triage", label: "HITL Swipe Arena", icon: SparklesIcon },
+      { href: "/itineraries", label: "Turnkey Dossiers", icon: CompassIcon },
+      { href: "/radar", label: "Silent Price Radar", icon: EyeIcon },
+      { href: "/memory", label: "Taste & Memory", icon: BrainCircuitIcon },
+    ],
+  },
   {
     label: "Workspace",
     items: [

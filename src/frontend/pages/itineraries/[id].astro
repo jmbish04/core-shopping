@@ -1,0 +1,21 @@
+---
+/**
+ * Viewport 4 Detail: Turnkey Itinerary Dossier Detail (/itineraries/[id])
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { ItineraryDossierView } from "@/components/shopping/itinerary-dossier-view";
+---
+
+<BaseLayout
+  title="Itinerary Dossier"
+  description="Turnkey travel package detail."
+>
+  <PageBody>
+    <PageToolbar
+      title="Turnkey Itinerary Dossier"
+      description="Interactive 3-pane command dossier for travel execution."
+    />
+    <ItineraryDossierView client:load />
+  </PageBody>
+</BaseLayout>

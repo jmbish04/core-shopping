@@ -1,0 +1,21 @@
+---
+/**
+ * Viewport 2 Detail: Goal Detail View (/goals/[id])
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { GoalsView } from "@/components/shopping/goals-view";
+---
+
+<BaseLayout
+  title="Goal Detail"
+  description="Detailed configuration and prompt tuning for a specific shopping goal."
+>
+  <PageBody>
+    <PageToolbar
+      title="Goal Detail & Rules Configuration"
+      description="Refine evaluation criteria, budget limits, and emergency triggers."
+    />
+    <GoalsView client:load />
+  </PageBody>
+</BaseLayout>

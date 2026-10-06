@@ -1,0 +1,21 @@
+---
+/**
+ * Viewport 4: Turnkey Itinerary Dossier (/itineraries)
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { ItineraryDossierView } from "@/components/shopping/itinerary-dossier-view";
+---
+
+<BaseLayout
+  title="Turnkey Dossiers"
+  description="Interactive 3-pane command dossiers with transit steps, rest/nap blocks, and choose-your-own-adventure forks."
+>
+  <PageBody>
+    <PageToolbar
+      title="Turnkey Itinerary Dossiers"
+      description="Zero-stress travel packages with pre-booked transit steps, mandatory afternoon rest blocks, and luxury shopping tax tips."
+    />
+    <ItineraryDossierView client:load />
+  </PageBody>
+</BaseLayout>

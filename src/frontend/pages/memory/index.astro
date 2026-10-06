@@ -1,0 +1,21 @@
+---
+/**
+ * Viewport 6: Agent Vector Memory & Taste Calibrator (/memory)
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { MemoryView } from "@/components/shopping/memory-view";
+---
+
+<BaseLayout
+  title="Taste & Memory"
+  description="Agent vector memory manager for inspecting and calibrating confidence scores and user preferences."
+>
+  <PageBody>
+    <PageToolbar
+      title="Agent Vector Memory & Taste Calibrator"
+      description="Calibrated preference embeddings synthesized from rules, HITL swipe decisions, and goal contexts."
+    />
+    <MemoryView client:load />
+  </PageBody>
+</BaseLayout>
