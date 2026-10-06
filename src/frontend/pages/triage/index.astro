@@ -1,0 +1,21 @@
+---
+/**
+ * Viewport 3: HITL Swipe Arena (/triage)
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { TriageView } from "@/components/shopping/triage-view";
+---
+
+<BaseLayout
+  title="HITL Swipe Arena"
+  description="Human-in-the-loop candidate evaluation arena with Tinder-style swipe gestures and feedback questionnaires."
+>
+  <PageBody>
+    <PageToolbar
+      title="HITL Swipe Arena"
+      description="Review discovery candidates, swipe right to generate turnkey dossiers, or reject to calibrate agent memory."
+    />
+    <TriageView client:load />
+  </PageBody>
+</BaseLayout>

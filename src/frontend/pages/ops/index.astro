@@ -1,0 +1,21 @@
+---
+/**
+ * Viewport 1: Mission Control & AI Ops (/ops)
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { OpsView } from "@/components/shopping/ops-view";
+---
+
+<BaseLayout
+  title="Mission Control"
+  description="AI Ops dashboard for tracking scheduled agent runs, discovery yield, and tool execution traces."
+>
+  <PageBody>
+    <PageToolbar
+      title="Mission Control & AI Ops"
+      description="Real-time telemetry, scheduled agent run queue, and tool execution waterfalls."
+    />
+    <OpsView client:load />
+  </PageBody>
+</BaseLayout>

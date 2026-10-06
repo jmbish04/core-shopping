@@ -35,3 +35,13 @@ export * from "./schemas/notifications";
 export * from "./schemas/inbox";
 export * from "./schemas/chat";
 export * from "./schemas/files";
+
+// ---------------------------------------------------------------------------
+// Colby-Maestro Shopping & Concierge tables
+// ---------------------------------------------------------------------------
+export * from "./schemas/shopping/shopping-goals";
+export * from "./schemas/shopping/user-preference-rules";
+export * from "./schemas/shopping/proposals";
+export * from "./schemas/shopping/hitl-feedback";
+export * from "./schemas/shopping/silent-price-logs";
+export * from "./schemas/shopping/agent-run-logs";
