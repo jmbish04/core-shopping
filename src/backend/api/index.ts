@@ -41,6 +41,7 @@ import { seedRouter } from "./routes/seed";
 import { settingsRouter } from "./routes/settings";
 import { shoppingRouter } from "./routes/shopping";
 import { mcpRouter } from "./routes/mcp";
+import { oauthRouter } from "./routes/oauth";
 import { taskDetailRouter } from "./routes/task-detail";
 import { taskHierarchyRouter } from "./routes/task-hierarchy";
 import { tasksRouter } from "./routes/tasks";
@@ -138,9 +139,10 @@ app.route("/api/inbox", inboxRouter);
 app.route("/api/files", filesRouter);
 app.route("/api/seed", seedRouter);
 
-// Colby-Maestro Shopping & MCP Routers
+// Colby-Maestro Shopping, OAuth 2.1 & MCP Routers
 app.route("/api/shopping", shoppingRouter);
 app.route("/api/mcp/v1", mcpRouter);
+app.route("/oauth", oauthRouter);
 
 app.route("/api/__client-error", clientErrorRouter);
 

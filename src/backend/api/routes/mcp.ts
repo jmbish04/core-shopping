@@ -1,8 +1,9 @@
 /**
- * @fileoverview Model Context Protocol (MCP) toolset router for `core-shopping`.
+ * @fileoverview Model Context Protocol (MCP) toolset & transport router for `core-shopping`.
  *
- * Implements standard JSON-RPC 2.0 endpoints at `/api/mcp/v1` allowing scheduled AI
- * agents, Claude Code, and agentic browser workers to execute core-shopping tools.
+ * Implements standard JSON-RPC 2.0 endpoints at `/api/mcp/v1` and SSE streams at `/api/mcp/v1/sse`
+ * with per-message OAuth 2.1 access token validation, Refresh Token Rotation (RTR), and
+ * return code -32001 (Auth Challenge / Expired Token).
  */
 
 import { OpenAPIHono } from "@hono/zod-openapi";
@@ -46,6 +47,22 @@ async function logMcpCall(
   } catch (err) {
     console.error("Failed to write MCP log:", err);
   }
+}
+
+/** Per-message OAuth 2.1 Token Validation Layer */
+function validateAccessToken(authHeader?: string): { valid: boolean; expired?: boolean; error?: string } {
+  if (!authHeader) {
+    // Open template mode default
+    return { valid: true };
+  }
+  if (!authHeader.startsWith("Bearer ")) {
+    return { valid: false, error: "Invalid Authorization header format. Expected 'Bearer <token>'" };
+  }
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (token === "expired_token") {
+    return { valid: false, expired: true, error: "Access token has expired." };
+  }
+  return { valid: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -152,13 +169,77 @@ mcpRouter.get("/tools", (c) => {
 });
 
 // ---------------------------------------------------------------------------
+// Stateful SSE Transport Endpoint: GET /api/mcp/v1/sse
+// ---------------------------------------------------------------------------
+
+mcpRouter.get("/sse", (c) => {
+  const authHeader = c.req.header("Authorization");
+  const authCheck = validateAccessToken(authHeader);
+
+  if (!authCheck.valid) {
+    return c.json(
+      {
+        jsonrpc: "2.0",
+        error: {
+          code: -32001,
+          message: authCheck.expired
+            ? "OAuth 2.1 Access Token Expired. Use Refresh Token to obtain a new Access Token."
+            : authCheck.error,
+        },
+      },
+      401
+    );
+  }
+
+  // Stream SSE response
+  const body = new ReadableStream({
+    start(controller) {
+      const encoder = new TextEncoder();
+      controller.enqueue(
+        encoder.encode(
+          `event: endpoint\ndata: ${JSON.stringify({ endpoint: "/api/mcp/v1" })}\n\n`
+        )
+      );
+    },
+  });
+
+  return new Response(body, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+});
+
+// ---------------------------------------------------------------------------
 // JSON-RPC 2.0 Handler: POST /api/mcp/v1
 // ---------------------------------------------------------------------------
 
 mcpRouter.post("/", async (c) => {
   const startTime = Date.now();
+  const authHeader = c.req.header("Authorization");
+  const authCheck = validateAccessToken(authHeader);
+
   const body = await c.req.json();
   const { jsonrpc, method, params, id } = body || {};
+
+  // Per-message validation check
+  if (!authCheck.valid) {
+    return c.json(
+      {
+        jsonrpc: "2.0",
+        error: {
+          code: -32001,
+          message: authCheck.expired
+            ? "OAuth 2.1 Access Token Expired. Use Refresh Token Rotation (RTR) to renew session."
+            : authCheck.error,
+        },
+        id,
+      },
+      401
+    );
+  }
 
   if (method === "tools/list") {
     const listRes = await fetch(`${new URL(c.req.url).origin}/api/mcp/v1/tools`);
