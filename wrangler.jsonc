@@ -1,5 +1,5 @@
 {
-  "name": "core-template-cf-reui",
+  "name": "core-shopping",
   "main": "./src/_worker.ts",
   "compatibility_date": "2026-05-25",
   "compatibility_flags": ["nodejs_compat"],
