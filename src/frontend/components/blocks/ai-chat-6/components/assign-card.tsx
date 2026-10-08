@@ -135,7 +135,7 @@ export function AssignCard({ goal, steps, threadId, onDocumentChanged }: AssignC
 
         {created ? (
           <a
-            href={`/tasks/${created.id}`}
+            href={`/lab/tasks/${created.id}`}
             className="text-primary ms-auto inline-flex items-center gap-1.5 text-sm underline-offset-4 hover:underline"
           >
             <CheckIcon className="size-3.5" aria-hidden="true" />

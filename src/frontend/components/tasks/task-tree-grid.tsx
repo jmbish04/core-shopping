@@ -246,7 +246,7 @@ export function TaskTreeGrid() {
 
   const handleAction = useCallback((action: TaskRowAction) => {
     if (action.kind === "open") {
-      window.location.href = `/tasks/${action.row.task.id}`;
+      window.location.href = `/lab/tasks/${action.row.task.id}`;
       return;
     }
 
