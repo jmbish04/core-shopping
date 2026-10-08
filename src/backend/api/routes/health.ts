@@ -19,6 +19,10 @@ import { desc, eq } from "drizzle-orm";
 import { healthRuns, healthResults } from "@db/schemas";
 import { getDb } from "@/db";
 import { guardianProject } from "@/backend/ai/guardian";
+import { sql } from "drizzle-orm";
+import { withPg } from "@/backend/pg/client";
+import { ledgerVerdict, newestJournalWhen } from "@/backend/pg/ledger";
+import pgJournal from "../../../../drizzle-pg/meta/_journal.json";
 
 // ---------------------------------------------------------------------------
 // HealthCoordinator
@@ -69,7 +73,8 @@ class HealthCoordinator {
       this.checkD1(),
       this.checkGuardianProject(),
       this.checkCoreGuardian(),
-    ]);
+      this.checkPostgres(),
+    ]).then((r) => r.flat());
 
     const durationMs = Date.now() - start;
     const status = aggregateStatus(checks);
@@ -211,6 +216,65 @@ class HealthCoordinator {
         message: error instanceof Error ? error.message : "Unknown core-guardian failure",
         durationMs: Date.now() - start,
       };
+    }
+  }
+
+  /**
+   * Postgres via Hyperdrive (core_shopping). Three checks, each able to fail
+   * the verdict on its own: a write round trip (insert inside a transaction
+   * that is always rolled back, so it proves DML rights without leaving rows),
+   * a pgvector query, and the migration ledger against this build.
+   */
+  private async checkPostgres(): Promise<CheckResult[]> {
+    const start = Date.now();
+    try {
+      return await withPg(this.env, async (db) => {
+        const out: CheckResult[] = [];
+        const t0 = Date.now();
+        await db.execute(sql`begin`);
+        try {
+          const ins = await db.execute(
+            sql`insert into goals (slug, title, category) values (${"health-probe-" + crypto.randomUUID()}, 'health probe', 'research') returning id`,
+          );
+          const back = await db.execute(sql`select count(*)::int as n from goals where id = ${(ins.rows[0] as { id: string }).id}`);
+          const ok = (back.rows[0] as { n: number }).n === 1;
+          out.push({
+            category: "database",
+            name: "postgres_write_roundtrip",
+            status: ok ? "ok" : "fail",
+            message: ok ? "Inserted and read back a goal through Hyperdrive (rolled back)" : "Inserted row was not readable",
+            durationMs: Date.now() - t0,
+          });
+        } finally {
+          await db.execute(sql`rollback`);
+        }
+        const t1 = Date.now();
+        const vec = await db.execute(sql`select ('[1,0,0]'::vector <=> '[1,0,0]'::vector) as d`);
+        const d = Number((vec.rows[0] as { d: number }).d);
+        out.push({
+          category: "database",
+          name: "pgvector",
+          status: d === 0 ? "ok" : "fail",
+          message: d === 0 ? "pgvector cosine distance works" : `unexpected cosine distance ${d}`,
+          durationMs: Date.now() - t1,
+        });
+        const t2 = Date.now();
+        const led = await db.execute(sql`select max(created_at)::bigint as w from drizzle.__drizzle_migrations`);
+        const applied = (led.rows[0] as { w: string | null }).w;
+        const verdict = ledgerVerdict(newestJournalWhen(pgJournal), applied == null ? null : Number(applied));
+        out.push({ category: "database", name: "postgres_migrations", ...verdict, durationMs: Date.now() - t2 });
+        return out;
+      });
+    } catch (error) {
+      return [
+        {
+          category: "database",
+          name: "postgres_connection",
+          status: "fail",
+          message: error instanceof Error ? error.message : "Unknown Postgres failure",
+          durationMs: Date.now() - start,
+        },
+      ];
     }
   }
 
