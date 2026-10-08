@@ -156,6 +156,16 @@
     // Empty string = forwarding disabled (the message is stored in D1 only).
     "INBOX_FORWARD_TO": "",
   },
+  // Domain data lives in Postgres (core_shopping on LXC 109, pgvector) reached
+  // through Hyperdrive. Created 2026-10-07 via the Cloudflare API; the id is the
+  // API response, not hand-typed. App role only (DML); migrations run from the
+  // Mac as core_shopping_owner — see scripts/pg-migrate.mjs.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "a6e0ef9b307d4620993ba78d71e4efbf",
+    },
+  ],
   "kv_namespaces": [
     {
       "binding": "SESSIONS",
