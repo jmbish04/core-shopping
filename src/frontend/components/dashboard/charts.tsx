@@ -126,7 +126,7 @@ export function TasksOverTimeChart({ data }: { data: TasksOverTimePoint[] }) {
           tickFormatter={dateTick}
         />
         <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
-        <ChartTooltip content={<ChartTooltipContent labelFormatter={dateTick} />} />
+        <ChartTooltip content={<ChartTooltipContent labelFormatter={(label) => dateTick(String(label))} />} />
         <Area
           dataKey="created"
           type="monotone"
@@ -172,7 +172,7 @@ export function ThroughputChart({ data }: { data: ThroughputPoint[] }) {
           tickFormatter={dateTick}
         />
         <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
-        <ChartTooltip content={<ChartTooltipContent labelFormatter={dateTick} />} cursor={false} />
+        <ChartTooltip content={<ChartTooltipContent labelFormatter={(label) => dateTick(String(label))} />} cursor={false} />
         <Bar dataKey="value" fill="var(--color-value)" radius={4} />
       </BarChart>
     </ChartContainer>

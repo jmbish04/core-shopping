@@ -145,7 +145,7 @@
   "vars": {
     // Set by scripts/set-guardian-project.mjs on every deploy: core-guardian
     // attributes this Worker's spend and routing decisions to this name.
-    "GUARDIAN_PROJECT": "core-template-cf-reui",
+    "GUARDIAN_PROJECT": "core-shopping",
     "AI_GATEWAY_ID": "default-gateway",
     "MODEL_CHAT": "@cf/openai/gpt-oss-120b",
     "MODEL_EXTRACT": "@cf/openai/gpt-oss-120b",
