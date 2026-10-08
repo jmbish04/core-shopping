@@ -11,3 +11,8 @@ export * from "@/backend/pg/schemas/goals/tags";
 export * from "@/backend/pg/schemas/runs/runs";
 export * from "@/backend/pg/schemas/catalog/entities";
 export * from "@/backend/pg/schemas/catalog/sightings";
+export * from "@/backend/pg/schemas/enums-m3";
+export * from "@/backend/pg/schemas/proposals/proposals";
+export * from "@/backend/pg/schemas/proposals/trips";
+export * from "@/backend/pg/schemas/hitl/reviews";
+export * from "@/backend/pg/schemas/alerts/alerts";
