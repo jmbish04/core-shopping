@@ -115,8 +115,17 @@ blocks 2026-09-26. Authority: the ReUI Astro React design system
   build STRIPS types rather than checking them — always also run
   `pnpm run typecheck`. `pnpm run selfcheck` runs the plain-assert checks in
   `scripts/selfcheck.mjs`.
-- **Local UI dev without Cloudflare auth:** `CF_REMOTE_BINDINGS=0 pnpm exec astro dev`
-  renders pages without remote bindings. `/api/*` is served by the Hono worker, so
+- **Local UI dev:** start it from `.claude/launch.json` (`astro-dev` / `worker-dev`),
+  never a bare `astro dev`. Two bindings make the bare command fail: Hyperdrive
+  refuses to start without `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE`,
+  and the Secret Store binding exists locally with no VALUE, so `.get()` throws
+  `Secret "WORKER_API_KEY" not found` and EVERY page 500s. The launch config reads
+  both from the tokens CLI, so no credential is written to disk; `utils/secrets.ts`
+  falls back to `<NAME>_DEV` (the binding object shadows a plain var of the same
+  name, and `.dev.vars` does not populate a Secret Store binding at all).
+  `/api/*` is served by the Hono worker, so data and chat need `worker-dev`;
+  under `astro-dev` expect `/api` 404s and an `astro:scripts/before-hydration`
+  404 that stops islands hydrating — both are dev-only. `/api/*` is served by the Hono worker, so
   data and chat only work under `pnpm run build && pnpm exec wrangler dev`.
 
 ## Template App Surface (reference implementation)
