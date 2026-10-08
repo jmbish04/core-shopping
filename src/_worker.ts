@@ -28,28 +28,18 @@ import type { ExportedHandler } from "@cloudflare/workers-types";
 
 import { app as honoApp } from "./backend/api/index";
 import { handleInboundEmail } from "./backend/email/inbound";
+import { buildEdge } from "./backend/edge";
 
-/** True for paths the Hono API owns (REST + OpenAPI doc surfaces). */
-function isApiPath(pathname: string): boolean {
-  return (
-    pathname.startsWith("/api/") ||
-    pathname === "/openapi.json" ||
-    pathname === "/swagger" ||
-    pathname === "/scalar" ||
-    pathname === "/scaler"
-  );
-  // NOTE: `/docs` is intentionally NOT an API path — it is served as an Astro
-  // SSR page (`src/frontend/pages/docs/index.astro`). The docs metadata API is
-  // mounted at `/api/docs/*`, which is covered by the `/api/` prefix above.
-}
+// Auth gate in front of both the API and the pages (see backend/edge.ts).
+const edge = buildEdge(
+  (req, env, ctx) => honoApp.fetch(req as any, env, ctx),
+  (req, env, ctx) => handle(req as any, env as any, ctx as any) as unknown as Response,
+);
 
 // `as any` bridges the lib.dom (Hono) vs @cloudflare/workers-types `Request` friction.
 const handler = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-    if (isApiPath(new URL(request.url).pathname)) {
-      return honoApp.fetch(request as any, env, ctx);
-    }
-    return handle(request as any, env as any, ctx as any);
+    return edge.fetch(request as any, env, ctx);
   },
 
   async email(message: any, env: Env, ctx: ExecutionContext) {

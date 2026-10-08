@@ -24,6 +24,22 @@ export async function getSecret(env: Env, key: string): Promise<string | undefin
 }
 
 /**
+ * Read a secret or throw an actionable error. Mirrors `requireSecret` in the
+ * canonical tokens SDK (~/bin/tokens_cli/sdk/secrets.ts).
+ *
+ * @throws Error naming the binding to add when the secret does not resolve.
+ */
+export async function requireSecret(env: Env, name: string): Promise<string> {
+  const value = await getSecret(env, name);
+  if (!value) {
+    throw new Error(
+      `[secrets] '${name}' did not resolve. Add it under "secrets_store_secrets" in wrangler.jsonc and run wrangler types.`,
+    );
+  }
+  return value;
+}
+
+/**
  * Fetch the WORKER_API_KEY (used for the single-user login + GitHub webhook
  * signature verification).
  */

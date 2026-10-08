@@ -22,7 +22,6 @@ import { apiReference } from "@scalar/hono-api-reference";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 
-import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/error";
 import { authRouter } from "./routes/auth";
 import { chatRouter } from "./routes/chat";
@@ -111,7 +110,9 @@ app.get("/api/swagger", swaggerUI({ url: "/api/openapi.json" }));
 // showcase feature APIs (projects, tasks, stats, settings, notifications,
 // dashboard) are intentionally open so the template runs end-to-end out of the
 // box. Tighten this to `/api/*` once you wire real per-user auth.
-app.use("/api/admin/*", authMiddleware);
+// Every /api/* request is already authenticated by src/backend/edge.ts
+// (passcode cookie, Bearer WORKER_API_KEY, or OAuth token). The old
+// template cookie check on /api/admin/* is retired with it.
 
 // ---------------------------------------------------------------------------
 // Domain routers
