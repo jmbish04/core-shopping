@@ -8,3 +8,6 @@ export * from "./common";
 export * from "./goals";
 export * from "./runs";
 export * from "./catalog";
+export * from "./proposals";
+export * from "./hitl";
+export * from "./alerts";
