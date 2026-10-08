@@ -73,7 +73,7 @@ export function NotCovered({ missing, question }: NotCoveredProps) {
         {ticket ? (
           <p className="text-sm">
             Ticket opened.{" "}
-            <a href={`/tasks/${ticket.id}`} className="underline underline-offset-4">
+            <a href={`/lab/tasks/${ticket.id}`} className="underline underline-offset-4">
               {ticket.title}
             </a>
           </p>

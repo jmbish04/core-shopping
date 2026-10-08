@@ -136,7 +136,7 @@ export function TaskCard({ task, asHandle, isOverlay, isDone, ...props }: TaskCa
 
         <h3 className="mt-3 min-h-10 text-sm leading-5 font-medium">
           <a
-            href={`/tasks/${task.id}`}
+            href={`/lab/tasks/${task.id}`}
             className="group/task-title inline-flex max-w-full min-w-0 items-start gap-1"
           >
             <span

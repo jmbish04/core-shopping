@@ -128,7 +128,7 @@ export function ProjectList() {
           className="w-[170px]"
           onChange={setSort}
         />
-        <Button render={<a href="/projects/new" />} className="ms-auto">
+        <Button render={<a href="/lab/projects/new" />} className="ms-auto">
           <PlusIcon data-icon="inline-start" aria-hidden="true" />
           New project
         </Button>
@@ -148,7 +148,7 @@ export function ProjectList() {
               : "Create the first project to start grouping tasks and notes."
           }
           action={
-            <Button render={<a href="/projects/new" />}>
+            <Button render={<a href="/lab/projects/new" />}>
               <PlusIcon data-icon="inline-start" aria-hidden="true" />
               New project
             </Button>

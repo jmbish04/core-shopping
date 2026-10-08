@@ -125,7 +125,7 @@ function TitleCell({
       <div className="flex min-w-0 flex-col">
         <span className="flex min-w-0 items-center gap-2">
           <a
-            href={`/tasks/${task.id}`}
+            href={`/lab/tasks/${task.id}`}
             className={cn(
               "group/task-title hover:text-primary text-foreground flex min-w-0 items-center gap-1 truncate text-sm transition-colors",
               isBranch ? "font-semibold" : "font-medium",
