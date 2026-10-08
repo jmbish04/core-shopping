@@ -1,6 +1,6 @@
 # core-shopping architecture: five open decisions
 
-- **Status:** open
+- **Status:** decided 2026-10-07
 - **Date:** 2026-10-07
 - **Maestro task:** `cs-decisions` (project `core-shopping`)
 - **Plans:** contract `886087a5f809`, frontend `99c7a1c3a4d3`, backend `82ec217595de`
@@ -39,4 +39,20 @@ The recommended option for each, applied when `cs-be-0-1` starts.
 
 ## Decision
 
-_(pending)_
+Justin, 2026-10-07:
+
+1. **Postgres:** `core_shopping` on `postgres-db.hacolby.app`.
+2. **Spotify:** borrow dopamine's integration and its existing Secret Store bindings
+   `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` (no new slots). core-shopping runs its own
+   OAuth because dopamine's token lacks `user-top-read` and `user-follow-read`; refresh token
+   in Postgres. One manual step: add core-shopping's redirect URI in the Spotify app dashboard.
+3. **Template:** keep every page and component (deliberately pre-loaded ReUI reference);
+   re-path them under `/lab`, redesign all routes and navigation for the shopper app.
+4. **Shell:** `app-shell-2`. `app-shell-10` was only an alternate suggested in planning;
+   Justin never requested it.
+5. **Images:** Images binding (`env.IMAGES.hosted`, token-free), copied from core-ai-tools
+   `src/backend/core/images/`.
+
+Added in the same answer: a service binding to the dopamine Worker so critical finds print a
+receipt on the Epson printer; its barcode opens `/notifications/{id}` in core-shopping
+(epics `cs-be-8`, `cs-fe-12`).
