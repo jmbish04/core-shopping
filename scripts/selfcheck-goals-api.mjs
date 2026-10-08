@@ -63,4 +63,13 @@ assert.deepEqual(
   "a value changed to null is still a change",
 );
 
+// Bookkeeping must never appear in a diff: a diff that always lists updated_at
+// buries the field the user actually changed.
+{
+  const before = { budget_max_cents: 40000, current_revision: 1, updated_at: "2026-10-08T18:02:44.124Z", title: "A" };
+  const after = { budget_max_cents: 60000, current_revision: 2, updated_at: "2026-10-08T18:02:49.883Z", title: "A" };
+  const fields = revisionDiff(before, after).map((d) => d.field);
+  assert.deepEqual(fields, ["budget_max_cents"], "only the real change is reported");
+}
+
 console.log("selfcheck-goals-api: ok");

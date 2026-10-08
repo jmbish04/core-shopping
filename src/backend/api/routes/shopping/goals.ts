@@ -90,6 +90,14 @@ export function generateGoalSlug(title: string, existingSlugs: Iterable<string> 
  * // [{ field: "status", before: "active", after: "paused" }]
  * ```
  */
+/**
+ * Fields that change on every write and so say nothing about what a person or
+ * an agent decided. They stay in the snapshot; they are only hidden from the
+ * diff, because a diff that always lists `updated_at` buries the one field that
+ * actually changed.
+ */
+const DIFF_IGNORED_FIELDS = new Set(["current_revision", "updated_at", "created_at", "last_run_at"]);
+
 export function revisionDiff(
   before: Snapshot | null | undefined,
   after: Snapshot,
@@ -97,6 +105,7 @@ export function revisionDiff(
   if (!before) return [];
   const fields = new Set([...Object.keys(before), ...Object.keys(after)]);
   return [...fields]
+    .filter((field) => !DIFF_IGNORED_FIELDS.has(field))
     .filter((field) => JSON.stringify(before[field]) !== JSON.stringify(after[field]))
     .sort()
     .map((field) => ({ field, before: before[field], after: after[field] }));
