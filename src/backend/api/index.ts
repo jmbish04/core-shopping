@@ -33,6 +33,7 @@ import { filesRouter } from "./routes/files";
 import { healthRouter } from "./routes/health";
 import { goalsRouter } from "./routes/shopping/goals";
 import { runsRouter } from "./routes/shopping/runs";
+import { shoppingDashboardRouter } from "./routes/shopping/dashboard";
 import { inboxRouter } from "./routes/inbox";
 import { activityRouter } from "./routes/activity";
 import { dashboardRouter } from "./routes/dashboard";
@@ -130,6 +131,10 @@ app.route("/api/docs", docsRouter);
 app.route("/api/projects", projectsRouter);
 app.route("/api/goals", goalsRouter);
 app.route("/api/runs", runsRouter);
+// The shopper Overview. Mounted on the same base as the template dashboard
+// router below; their paths do not overlap (/overview vs /stats, /charts,
+// /insights).
+app.route("/api/dashboard", shoppingDashboardRouter);
 app.route("/api/tasks", tasksRouter);
 // Comments / Subtasks / Attachments for a single task — mounted alongside
 // tasksRouter under the same base; its paths are all `/{id}/…` sub-resources.

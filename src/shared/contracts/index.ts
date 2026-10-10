@@ -11,3 +11,4 @@ export * from "./catalog";
 export * from "./proposals";
 export * from "./hitl";
 export * from "./alerts";
+export * from "./dashboard";
