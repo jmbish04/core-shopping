@@ -126,8 +126,10 @@ export async function reviewBacklog(db: PgDb, windowStart: Date, windowEnd: Date
     select
       count(*) filter (where status = 'queued')::int as queued,
       count(*) filter (where status = 'snoozed')::int as snoozed,
+      -- The cast is load-bearing: an untyped parameter next to an interval is
+      -- parsed as interval + interval, which fails with 42883 on every call.
       count(*) filter (where status = 'queued' and expires_at is not null
-                         and expires_at < ${windowEnd} + interval '48 hours')::int as expiring_soon,
+                         and expires_at < (${windowEnd}::timestamptz + interval '48 hours'))::int as expiring_soon,
       min(created_at) filter (where status = 'queued') as oldest_queued_at,
       count(*) filter (where status = 'silent_update'
                          and created_at >= ${windowStart} and created_at < ${windowEnd})::int as silent_updates,
