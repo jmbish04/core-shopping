@@ -28,5 +28,9 @@ export async function fetchList<T>(
   path: string,
   params: Record<string, string> = {},
 ): Promise<ListEnvelope<T>> {
-  return apiGet<ListEnvelope<T>>(`${path}${qs(params)}`);
+  // `apiGet` prefixes `/api/` itself, so a caller writing the endpoint the way
+  // it appears in the OpenAPI document — "/api/goals" — would otherwise reach
+  // `/api/api/goals`. Both spellings are accepted rather than making every call
+  // site remember which half of the path it owns.
+  return apiGet<ListEnvelope<T>>(`${path.replace(/^\/?api\//, "")}${qs(params)}`);
 }
