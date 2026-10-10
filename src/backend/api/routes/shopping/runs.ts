@@ -160,7 +160,22 @@ function runListFrom(db: PgDb): ListSelectFactory {
   };
 }
 
-function normalizeRun(row: RunListItem) {
+/**
+ * Normalize one raw list row into the wire contract.
+ *
+ * Exported so `scripts/selfcheck-runs-rows.mjs` can feed it rows measured from
+ * PostgreSQL rather than reimplementing the coercions in the test — a check
+ * that restates the code it checks cannot catch the code being wrong.
+ *
+ * @param row - A raw row from the list or detail query.
+ * @returns The row parsed against the run contract, with `duration_ms` added.
+ * @throws {z.ZodError} When the row does not satisfy the contract.
+ * @example
+ * ```typescript
+ * normalizeRun({ ...row, started_at: "2026-10-10 10:00:00+00" }).duration_ms; // 1250
+ * ```
+ */
+export function normalizeRun(row: RunListItem) {
   const startedAt = row.started_at as Date | string;
   const finishedAt = row.finished_at as Date | string | null;
   return runListRowSchema.parse({
