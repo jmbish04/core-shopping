@@ -1,14 +1,21 @@
 # core-shopping — session handoff
 
-Written 2026-10-08. Branch `claude/colby-maestro-shopping-plan-40e575`, pushed,
-head `b984692`. Nothing is merged to `main` yet.
+Updated 2026-10-10 (second session). Branch
+`claude/core-shopping-m2-continue-bfd492`, pushed, head `9cd9fca`. Nothing is
+merged to `main` yet.
+
+The previous branch, `claude/colby-maestro-shopping-plan-40e575`, ends at the
+PR #5 merge (`2d6f5e5`) and is not being worked on. This branch continues from
+it; the session that owned it confirmed it was finished before anything moved.
 
 ## Where this stands
 
 **M1 is complete.** M2 is in flight.
 
 Live and verified on `https://core-shopping.hacolby.workers.dev` (version
-`1d950df9`): `POST /api/health/run` returns `healthy`, 6 of 6 checks ok.
+`2af66f81`): `POST /api/health/run` returns `healthy`, 6 of 6 checks ok. Read
+the caveat on that verdict under "Hyperdrive caches reads" below — it was green
+throughout a real outage of correctness.
 
 - **Postgres** `core_shopping` on `postgres-db.hacolby.app` (LXC 109, pgvector
   0.8.6), reached through Hyperdrive `a6e0ef9b307d4620993ba78d71e4efbf`.
@@ -20,24 +27,60 @@ Live and verified on `https://core-shopping.hacolby.workers.dev` (version
   answer 401 with `WWW-Authenticate`. Icons, `/_astro`, `/.well-known`, and
   `GET /api/ping` and `/api/health` are public. The ecosystem auth-check passes
   19 of 19 against this repo's copies.
-- **Goals API** is live and exercised against real data (see below).
+- **Goals API, Runs API and the Overview endpoint** are live and exercised
+  against real data. `accept_rate` is `null::real` for every goal until
+  `cs-be-1-5` lands, which is why the em-dash rendering matters.
 - **Frontend**: 52 ReUI block directories installed, template pages re-pathed
   under `/lab/*` with nothing deleted, 9 shopper routes rendering real empty
   states, radar icon set serving.
 
-## Do these first
+## Done since the last handoff
 
-1. **Review and merge PR #5** — the Runs API (`cs-be-2-3`, farm job
-   `b7deecc4`, succeeded). Review it the way the last two were reviewed: run
-   `pnpm run typecheck`, `pnpm run selfcheck`, `node scripts/ui-guard.mjs`, then
-   **plant a regression in one of its pure helpers and confirm the self-check
-   goes red**. A suite nobody has seen fail has not been seen to work. Then
-   merge, deploy, and curl `/api/runs` on the deployed Worker.
-2. **Build the Goals console yourself** (`cs-fe-2-1`, status `todo`). Farm job
-   `4c61fcc4` FAILED with "No commits between …" — codex produced nothing, so
-   there is no PR. Justin's standing instruction is that a failed farm job comes
-   back to Claude Code. The full spec is in the task's worklog and in the
-   frontend plan; the API it needs is live.
+- **PR #5 merged** (`2d6f5e5`) — the Runs API, `cs-be-2-3`, now `done`.
+  `GET /api/runs` and `/api/runs/{id}` are live and probed.
+- **Goals console** (`cs-fe-2-1`, `done`) — `/goals` is the real console:
+  Data Grid grouped by category, health tabs, the ReUI Filters builder, enable
+  switches and a bulk pause/resume bar, all round-tripping through the API and
+  the URL.
+- **Overview contract and endpoint** (`cs-c-09`, `cs-be-2-9`, both `done`) —
+  `GET /api/dashboard/overview` is live. **`cs-fe-1-1` is unblocked.**
+- **Hyperdrive query caching disabled** — see the next section. This one
+  changes the consistency model every query in this project inherits.
+
+## Do these next
+
+1. **`cs-fe-1-1` Overview KPI strip.** Its contract and endpoint are both live
+   and probed, and the payload already carries everything FE-1 asks for:
+   KPI tiles with deltas, `runs_per_day` dense by outcome, per-goal last-20-run
+   strips, the review backlog and recent proposals. Blocks are clear.
+2. **`cs-fe-10-1` Runs queue**, which `GET /api/runs` now backs. One
+   follow-up recorded on `cs-be-2-3` first: `?q=` searches `agentRuns.model`
+   only, and `summary` belongs in `searchColumns` before that screen ships.
+3. **`5492781d5118`** — a health check that commits a write and reads it back
+   on a *separate request*. The existing `postgres_write_roundtrip` check was
+   green for the whole hour the console was serving month-old state, because it
+   writes and reads inside one transaction.
+
+## Hyperdrive caches reads, and it bit this project
+
+**Measured and fixed 2026-10-10. Full record:
+`docs/decisions/2026-10-10-hyperdrive-query-caching.md`.**
+
+Hyperdrive caches read queries by default — `max_age` 60s — and **does not
+invalidate on write**. Pausing a goal wrote correctly and then read back the
+pre-pause state for about a minute. Query caching is now **disabled** on
+configuration `a6e0ef9b307d4620993ba78d71e4efbf`.
+
+Two things to carry rather than rediscover:
+
+- **Only some reads were stale**, which is what made it hard to see. This
+  schema's `stale` flag calls `now()`, so any query carrying it is uncacheable:
+  a list's `items` stayed fresh while the same response's `total` (a plain
+  count) was stale, and the healthy tab emptied correctly while the paused tab
+  stayed empty. Three probe rounds went into suspecting the filter compiler.
+- **Do not let caching back on** without the check in `5492781d5118`. And if
+  `stale` is ever precomputed into a column, those queries become cacheable and
+  this returns on the surfaces where it is hardest to see.
 
 ## The loop that works, and why
 
@@ -52,6 +95,17 @@ ln -s "$PWD/node_modules" "$SCRATCH/pr/node_modules"
 ```
 
 Then break one function, confirm the self-check fails, restore, confirm green.
+
+**An empty table means a live probe proves nothing.** `/api/runs` answered
+200 with `[]` and `/api/dashboard/overview` answered 200 with zeros, because
+`agent_runs` and `proposals` are empty — so neither probe touched the
+aggregates, the window functions or the revision lateral. The move that works,
+and that found three real bugs today, is to run the real SQL against real
+Postgres with seeded rows **inside a transaction you roll back**:
+`pnpm run verify:dashboard` is the worked example (30 assertions, all deltas
+against a baseline measured in the same transaction, and it counts the seeded
+rows afterwards to prove the rollback). No seed data ever reaches the repo or
+survives the script.
 
 **A deploy does not prove the thing works.** The Goals API typechecked, built
 and deployed green while its revision diff listed `updated_at` on every change.
@@ -84,9 +138,15 @@ router; that has been the only shared file so far and it has not collided.
 ## Verification commands
 
 ```bash
-cd /Volumes/Projects/workers/core-shopping/.claude/worktrees/colby-maestro-shopping-plan-40e575
-pnpm run typecheck && node scripts/ui-guard.mjs && pnpm run selfcheck
+cd /Volumes/Projects/workers/core-shopping/.claude/worktrees/core-shopping-m2-continue-bfd492
+pnpm run typecheck && node scripts/ui-guard.mjs && pnpm run selfcheck   # 16 suites
+pnpm run verify:dashboard             # the Overview SQL against real Postgres
 bash scripts/check.sh                 # build into a throwaway dir
+
+# `pnpm run deploy` needs the Cloudflare token in the environment or the D1
+# migration step dies with "necessary to set a CLOUDFLARE_API_TOKEN".
+export CLOUDFLARE_API_TOKEN="$(tokens show CLOUDFLARE_WRANGLER_API_TOKEN --value-only)"
+export CLOUDFLARE_ACCOUNT_ID="$(tokens show CLOUDFLARE_ACCOUNT_ID --value-only)"
 pnpm run deploy                       # build, D1 migrate, Postgres migrate, deploy
 ```
 
