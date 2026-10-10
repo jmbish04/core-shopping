@@ -32,6 +32,7 @@ import { docsRouter } from "./routes/docs";
 import { filesRouter } from "./routes/files";
 import { healthRouter } from "./routes/health";
 import { goalsRouter } from "./routes/shopping/goals";
+import { runsRouter } from "./routes/shopping/runs";
 import { inboxRouter } from "./routes/inbox";
 import { activityRouter } from "./routes/activity";
 import { dashboardRouter } from "./routes/dashboard";
@@ -128,6 +129,7 @@ app.route("/api/docs", docsRouter);
 // Feature APIs (open — see auth note above)
 app.route("/api/projects", projectsRouter);
 app.route("/api/goals", goalsRouter);
+app.route("/api/runs", runsRouter);
 app.route("/api/tasks", tasksRouter);
 // Comments / Subtasks / Attachments for a single task — mounted alongside
 // tasksRouter under the same base; its paths are all `/{id}/…` sub-resources.
