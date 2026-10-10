@@ -261,6 +261,43 @@ export function ratioOrNull(numerator: number, denominator: number): number | nu
 }
 
 /**
+ * Close the dashboard's window, day-aligned, so the series and the counts agree.
+ *
+ * The window **ends now** and **starts at midnight UTC** on the first of its
+ * `window_days` calendar days. Day-aligning the start is not cosmetic: a window
+ * that simply started `window_days * 24h` ago would span `window_days + 1`
+ * calendar days, the dense series would hold one bucket too few, and the runs
+ * that happened today would fall off the end of the chart while still counting
+ * toward the "runs in 7d" tile. The two would disagree and the chart would be
+ * the one that was wrong.
+ *
+ * The previous window is the same number of whole days immediately before, so
+ * a delta compares like with like.
+ *
+ * @param now - The instant the dashboard was asked for.
+ * @param windowDays - How many calendar days the window spans, including today.
+ * @returns The window bounds and the start of the preceding window.
+ * @example
+ * ```typescript
+ * dashboardWindow(new Date("2026-10-10T18:30:00Z"), 7);
+ * // start 2026-10-04T00:00:00Z, end 2026-10-10T18:30:00Z,
+ * // previousStart 2026-09-27T00:00:00Z
+ * ```
+ */
+export function dashboardWindow(
+  now: Date,
+  windowDays: number,
+): { windowStart: Date; windowEnd: Date; previousStart: Date } {
+  const startOfToday = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const windowStart = new Date(startOfToday - (windowDays - 1) * 86_400_000);
+  return {
+    windowStart,
+    windowEnd: now,
+    previousStart: new Date(windowStart.getTime() - windowDays * 86_400_000),
+  };
+}
+
+/**
  * Fill a day-bucketed series out to every day in the window.
  *
  * @param start - First day of the window, as YYYY-MM-DD.

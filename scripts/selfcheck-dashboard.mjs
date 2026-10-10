@@ -43,6 +43,7 @@ const {
   DASHBOARD_STRIP_RUNS,
   DashboardOverviewQuerySchema,
   DashboardOverviewSchema,
+  dashboardWindow,
   denseDays,
   makeKpi,
   ratioOrNull,
@@ -134,6 +135,52 @@ assert.equal(
 // A bucket outside the window is ignored rather than appended, so a row the
 // query should not have returned cannot stretch the axis.
 assert.equal(denseDays("2026-10-08", 2, { "2026-12-25": { succeeded: 9 } }).length, 2);
+
+// --- the window is day-aligned so the series and the counts agree -----------
+// The bug this prevents: a window starting exactly windowDays*24h ago spans
+// windowDays+1 CALENDAR days, so the dense series is one bucket short and
+// today's runs drop off the chart while still counting in the "runs" tile.
+{
+  const now = new Date("2026-10-10T18:30:00.000Z");
+  const w = dashboardWindow(now, 7);
+  assert.equal(w.windowEnd.toISOString(), "2026-10-10T18:30:00.000Z", "the window ends now");
+  assert.equal(
+    w.windowStart.toISOString(),
+    "2026-10-04T00:00:00.000Z",
+    "and starts at midnight UTC six days back, so seven calendar days are covered",
+  );
+  assert.equal(w.previousStart.toISOString(), "2026-09-27T00:00:00.000Z");
+
+  const series = denseDays(w.windowStart.toISOString().slice(0, 10), 7, {});
+  assert.equal(series.length, 7);
+  assert.equal(
+    series.at(-1).date,
+    "2026-10-10",
+    "TODAY is the last bucket — a run an hour ago has somewhere to land",
+  );
+  assert.equal(series[0].date, "2026-10-04");
+
+  // The previous window is the same number of whole days, so a delta compares
+  // like with like rather than six-and-a-bit days against seven.
+  assert.equal(
+    (w.windowStart.getTime() - w.previousStart.getTime()) / 86_400_000,
+    7,
+    "the baseline window is exactly as long as the current one",
+  );
+
+  // A one-day window is today alone, not today plus yesterday.
+  const one = dashboardWindow(now, 1);
+  assert.equal(one.windowStart.toISOString(), "2026-10-10T00:00:00.000Z");
+  assert.equal(denseDays(one.windowStart.toISOString().slice(0, 10), 1, {})[0].date, "2026-10-10");
+
+  // Across a month boundary, and at the very start of a UTC day.
+  const edge = dashboardWindow(new Date("2026-11-01T00:00:00.000Z"), 3);
+  assert.equal(edge.windowStart.toISOString(), "2026-10-30T00:00:00.000Z");
+  assert.deepEqual(
+    denseDays(edge.windowStart.toISOString().slice(0, 10), 3, {}).map((d) => d.date),
+    ["2026-10-30", "2026-10-31", "2026-11-01"],
+  );
+}
 
 // --- the query's own defaults -----------------------------------------------
 const defaults = DashboardOverviewQuerySchema.parse({});
