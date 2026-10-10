@@ -147,12 +147,16 @@ try {
     ],
   );
 
-  // Four runs in the window (one still going), two in the window before it.
+  // Five runs in the window (one still going), two in the window before it.
+  // R7 starts at 23:00 two days ago and finishes at 01:00 the next day: it is
+  // the only row that can tell "bucketed on started_at" apart from "bucketed
+  // on finished_at", and without it that mistake passes every other check.
   const runs = [
     [R(1), "succeeded", d(0, 1), plus(d(0, 1), 1500), G1],
     [R(2), "failed", d(1, 1), plus(d(1, 1), 2000), G1],
     [R(3), "succeeded", d(2, 1), plus(d(2, 1), 3000), G1],
     [R(4), "running", d(0, 2), null, G1],
+    [R(7), "succeeded", d(2, 23), d(1, 1), G1],
     [R(5), "succeeded", d(7, 1), plus(d(7, 1), 1000), G2],
     [R(6), "failed", d(8, 1), plus(d(8, 1), 1000), G2],
   ];
@@ -214,14 +218,14 @@ try {
   console.log(`previous window starts ${previousStart.toISOString()}\n`);
 
   console.log("runs:");
-  check("4 runs started in the window, 2 in the one before", {
+  check("5 runs started in the window, 2 in the one before", {
     current: after.runs.current - before.runs.current,
     previous: after.runs.previous - before.runs.previous,
-  }, { current: 4, previous: 2 });
-  check("3 finished in the window, 2 of them succeeded", {
+  }, { current: 5, previous: 2 });
+  check("4 finished in the window, 3 of them succeeded", {
     done: after.outcomes.doneCurrent - before.outcomes.doneCurrent,
     ok: after.outcomes.okCurrent - before.outcomes.okCurrent,
-  }, { done: 3, ok: 2 });
+  }, { done: 4, ok: 3 });
   check("the running run is counted as started but not as finished", {
     startedMinusFinished:
       after.runs.current - before.runs.current - (after.outcomes.doneCurrent - before.outcomes.doneCurrent),
@@ -244,7 +248,14 @@ try {
     running: delta(dayOf(0), "running"),
   }, { succeeded: 1, running: 1 });
   check("yesterday holds the failed run", delta(dayOf(1), "failed"), 1);
-  check("two days ago holds the other success", delta(dayOf(2), "succeeded"), 1);
+  check("two days ago holds the other two successes", delta(dayOf(2), "succeeded"), 2);
+  // The midnight-spanning run belongs to the day it STARTED. Bucketing it on
+  // its finish would move it to yesterday, and yesterday's counts would be
+  // wrong in a way nothing else here would notice.
+  check("the run that spanned midnight stays on its START day", {
+    dayItStarted: delta(dayOf(2), "succeeded"),
+    dayItFinished: delta(dayOf(1), "succeeded"),
+  }, { dayItStarted: 2, dayItFinished: 0 });
   check(
     "the run from BEFORE the window is not in the series",
     after.perDay.some((r) => r.date === dayOf(7)),
@@ -301,10 +312,11 @@ try {
   const strip1 = after.strips.find((s) => s.goal_id === G1);
   const strip2 = after.strips.find((s) => s.goal_id === G2);
   check("the in-window goal has a strip", Boolean(strip1), true);
-  check("its 4 runs are oldest first", strip1?.runs.map((r) => r.id), [R(3), R(2), R(1), R(4)]);
-  check("runs_total matches", strip1?.runs_total, 4);
+  check("its 5 runs are oldest first", strip1?.runs.map((r) => r.id),
+    [R(3), R(7), R(2), R(1), R(4)]);
+  check("runs_total matches", strip1?.runs_total, 5);
   check("durations are milliseconds, and a running run has none",
-    strip1?.runs.map((r) => r.duration_ms), [3000, 2000, 1500, null]);
+    strip1?.runs.map((r) => r.duration_ms), [3000, 7_200_000, 2000, 1500, null]);
   check("a goal whose next run is overdue reads stale", strip2?.stale, true);
   check("a goal inside its cadence does not", strip1?.stale, false);
 
