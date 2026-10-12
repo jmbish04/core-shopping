@@ -40,8 +40,20 @@ registerHooks({
   },
 });
 
-const { aggregateGoalIds, computeRunDurationMs, orderRunStatusGroups } =
+const { aggregateGoalIds, computeRunDurationMs, orderRunStatusGroups, RUN_SEARCH_COLUMNS } =
   await import("../src/backend/api/routes/shopping/runs.ts");
+const { compileSearch } = await import("../src/backend/api/list/index.ts");
+const { PgDialect } = await import("drizzle-orm/pg-core");
+
+// `?q=` must reach the run's summary, not only its model (cs-be-2-3 follow-up,
+// needed before the Runs queue ships). Rendered to real SQL, so the check fails
+// if the column list is right but the compiler drops one of them.
+{
+  const compiled = new PgDialect().sqlToQuery(compileSearch(RUN_SEARCH_COLUMNS, "laptop 50%"));
+  assert.match(compiled.sql, /"agent_runs"\."summary" ilike \$\d/, "q searches the run summary");
+  assert.match(compiled.sql, /"agent_runs"\."model" ilike \$\d/, "q still searches the model");
+  assert.ok(compiled.params.every((p) => p === "%laptop 50\\%%"), "the term is LIKE-escaped");
+}
 
 assert.equal(computeRunDurationMs("2026-10-08T10:00:00.000Z", "2026-10-08T10:00:01.250Z"), 1250);
 assert.equal(

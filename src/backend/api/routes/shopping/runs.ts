@@ -115,7 +115,7 @@ const goalIds = sql<string[]>`coalesce(
   array[]::uuid[]
 )`;
 
-const runListColumns: ColumnMap<typeof RUN_LIST_FIELDS> = {
+export const runListColumns: ColumnMap<typeof RUN_LIST_FIELDS> = {
   status: agentRuns.status,
   client: agentRuns.client,
   model: agentRuns.model,
@@ -123,6 +123,13 @@ const runListColumns: ColumnMap<typeof RUN_LIST_FIELDS> = {
   goal_id: runGoals.goalId,
   quality_score: agentRuns.qualityScore,
 };
+
+/**
+ * What `?q=` searches: the model and the run's own summary. The summary is
+ * where a run says what it looked for, so it is what a person types into the
+ * Runs queue's search box; searching the model alone matched almost nothing.
+ */
+export const RUN_SEARCH_COLUMNS = [agentRuns.model, agentRuns.summary];
 
 const runListSelection = {
   id: agentRuns.id,
@@ -248,6 +255,41 @@ async function loadRunDetail(db: PgDb, id: string) {
   });
 }
 
+/**
+ * Run the queue's list query and normalise it to the wire envelope.
+ *
+ * The route is a thin wrapper around this, so `scripts/verify-runs-queue-sql.mjs`
+ * can run the exact query the API runs against real PostgreSQL.
+ *
+ * @param db - A Drizzle PostgreSQL handle.
+ * @param query - A validated list query.
+ * @returns The list envelope, with status groups in triage order.
+ * @throws {ListQueryError} When the query names an unknown field or operator.
+ * @example
+ * ```typescript
+ * await listRuns(db, { page: 1, page_size: 50, group_by: "status" });
+ * ```
+ */
+export async function listRuns(db: PgDb, query: z.infer<typeof ListQuerySchema>) {
+  const result = await runList<RunListItem, typeof RUN_LIST_FIELDS>(db, {
+    fields: RUN_LIST_FIELDS,
+    columns: runListColumns,
+    query,
+    from: runListFrom(db),
+    fallback: desc(agentRuns.startedAt),
+    searchColumns: RUN_SEARCH_COLUMNS,
+  });
+  return runListEnvelopeSchema.parse({
+    ...result,
+    items: result.items.map(normalizeRun),
+    ...(result.groups
+      ? {
+          groups: query.group_by === "status" ? orderRunStatusGroups(result.groups) : result.groups,
+        }
+      : {}),
+  });
+}
+
 /** Runs API router. */
 export const runsRouter = new OpenAPIHono<{ Bindings: Env }>();
 
@@ -273,27 +315,8 @@ runsRouter.openapi(
   async (c) => {
     const query = c.req.valid("query");
     try {
-      const result = await withPg(c.env, (db) =>
-        runList<RunListItem, typeof RUN_LIST_FIELDS>(db, {
-          fields: RUN_LIST_FIELDS,
-          columns: runListColumns,
-          query,
-          from: runListFrom(db),
-          fallback: desc(agentRuns.startedAt),
-          searchColumns: [agentRuns.model],
-        }),
-      );
-      const normalized = {
-        ...result,
-        items: result.items.map(normalizeRun),
-        ...(result.groups
-          ? {
-              groups:
-                query.group_by === "status" ? orderRunStatusGroups(result.groups) : result.groups,
-            }
-          : {}),
-      };
-      return c.json(runListEnvelopeSchema.parse(normalized), 200);
+      const result = await withPg(c.env, (db) => listRuns(db, query));
+      return c.json(result, 200);
     } catch (error) {
       if (error instanceof ListQueryError) {
         return c.json(errorBody("invalid_list_query", error.message, error.problems), 400);
