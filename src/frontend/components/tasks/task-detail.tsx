@@ -198,12 +198,12 @@ export function TaskDetail({ taskId }: { taskId: string }) {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/tasks">Tasks</BreadcrumbLink>
+            <BreadcrumbLink href="/lab/tasks">Tasks</BreadcrumbLink>
           </BreadcrumbItem>
           {ancestors.map((ancestor) => (
             <BreadcrumbItem key={ancestor.id}>
               <BreadcrumbSeparator />
-              <BreadcrumbLink href={`/tasks/${ancestor.id}`}>{ancestor.title}</BreadcrumbLink>
+              <BreadcrumbLink href={`/lab/tasks/${ancestor.id}`}>{ancestor.title}</BreadcrumbLink>
             </BreadcrumbItem>
           ))}
           <BreadcrumbItem>

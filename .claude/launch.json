@@ -6,19 +6,16 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "CF_REMOTE_BINDINGS=0 exec pnpm exec astro dev --port 4391"
+        "export CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=\"postgresql://core_shopping_app:$(tokens show CORE_SHOPPING_PG_APP_PASSWORD --value-only)@192.168.1.50:5432/core_shopping?sslmode=require\" && export CLOUDFLARE_INCLUDE_PROCESS_ENV=true WORKER_API_KEY_DEV=\"$(tokens show WORKER_API_KEY --value-only)\" && CF_REMOTE_BINDINGS=0 exec pnpm exec astro dev --port 4391"
       ],
       "port": 4391
     },
     {
       "name": "worker-dev",
-      "runtimeExecutable": "pnpm",
+      "runtimeExecutable": "bash",
       "runtimeArgs": [
-        "exec",
-        "wrangler",
-        "dev",
-        "--port",
-        "8799"
+        "-c",
+        "export CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=\"postgresql://core_shopping_app:$(tokens show CORE_SHOPPING_PG_APP_PASSWORD --value-only)@192.168.1.50:5432/core_shopping?sslmode=require\" && export CLOUDFLARE_INCLUDE_PROCESS_ENV=true WORKER_API_KEY_DEV=\"$(tokens show WORKER_API_KEY --value-only)\" && exec pnpm exec wrangler dev --port 8799"
       ],
       "port": 8799
     }

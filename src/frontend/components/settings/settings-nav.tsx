@@ -15,10 +15,10 @@ import { cn } from "@/lib/utils";
 
 /** The four settings sections, in rail order. */
 export const SETTINGS_SECTIONS = [
-  { href: "/settings/preferences", label: "Preferences", description: "Appearance, locale and accessibility." },
-  { href: "/settings/notifications", label: "Notifications", description: "Which channels get which events." },
-  { href: "/settings/webhooks", label: "Webhooks", description: "Outbound delivery endpoints." },
-  { href: "/settings/advanced", label: "Advanced", description: "Maintenance and destructive actions." },
+  { href: "/lab/settings/preferences", label: "Preferences", description: "Appearance, locale and accessibility." },
+  { href: "/lab/settings/notifications", label: "Notifications", description: "Which channels get which events." },
+  { href: "/lab/settings/webhooks", label: "Webhooks", description: "Outbound delivery endpoints." },
+  { href: "/lab/settings/advanced", label: "Advanced", description: "Maintenance and destructive actions." },
 ] as const;
 
 /**

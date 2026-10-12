@@ -1,0 +1,12 @@
+---
+import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { EmptyState } from "@/components/common";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Runs" description="Track shopper-agent work from start to finish.">
+  <PageBody>
+    <PageToolbar title="Runs" description="Follow active and completed research runs, including their outcomes." />
+    <EmptyState title="Runs is being built" description="Maestro epic cs-fe-10 will provide a truthful history of agent execution here." />
+  </PageBody>
+</BaseLayout>

@@ -22,7 +22,6 @@ import { apiReference } from "@scalar/hono-api-reference";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 
-import { authMiddleware } from "./middleware/auth";
 import { errorHandler } from "./middleware/error";
 import { authRouter } from "./routes/auth";
 import { chatRouter } from "./routes/chat";
@@ -32,6 +31,9 @@ import { adminRouter, configRouter } from "./routes/config";
 import { docsRouter } from "./routes/docs";
 import { filesRouter } from "./routes/files";
 import { healthRouter } from "./routes/health";
+import { goalsRouter } from "./routes/shopping/goals";
+import { runsRouter } from "./routes/shopping/runs";
+import { shoppingDashboardRouter } from "./routes/shopping/dashboard";
 import { inboxRouter } from "./routes/inbox";
 import { activityRouter } from "./routes/activity";
 import { dashboardRouter } from "./routes/dashboard";
@@ -111,7 +113,9 @@ app.get("/api/swagger", swaggerUI({ url: "/api/openapi.json" }));
 // showcase feature APIs (projects, tasks, stats, settings, notifications,
 // dashboard) are intentionally open so the template runs end-to-end out of the
 // box. Tighten this to `/api/*` once you wire real per-user auth.
-app.use("/api/admin/*", authMiddleware);
+// Every /api/* request is already authenticated by src/backend/edge.ts
+// (passcode cookie, Bearer WORKER_API_KEY, or OAuth token). The old
+// template cookie check on /api/admin/* is retired with it.
 
 // ---------------------------------------------------------------------------
 // Domain routers
@@ -125,6 +129,12 @@ app.route("/api/docs", docsRouter);
 
 // Feature APIs (open — see auth note above)
 app.route("/api/projects", projectsRouter);
+app.route("/api/goals", goalsRouter);
+app.route("/api/runs", runsRouter);
+// The shopper Overview. Mounted on the same base as the template dashboard
+// router below; their paths do not overlap (/overview vs /stats, /charts,
+// /insights).
+app.route("/api/dashboard", shoppingDashboardRouter);
 app.route("/api/tasks", tasksRouter);
 // Comments / Subtasks / Attachments for a single task — mounted alongside
 // tasksRouter under the same base; its paths are all `/{id}/…` sub-resources.

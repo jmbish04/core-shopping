@@ -1,38 +1,12 @@
 ---
-/**
- * RESPONSIVE STRATEGY
- * desktop: page toolbar, then the inbox Frame (notification timeline) beside a 26rem test-composer Frame.
- * mobile (390px): the composer stacks under the inbox; timeline rows wrap, "Mark read" stays on the title line.
- * vehicle: same as mobile; reading-only use, each "Mark read" is a separate tap target.
- *
- * @fileoverview /notifications — notification inbox.
- *
- * `<NotificationsFeed />` reads the D1-backed /api/notifications REST API and
- * polls every 15s while visible (plain fetch island, so `client:load` is safe).
- * `<SendTestNotification />` POSTs to the same API and pings the feed to
- * refetch immediately.
- */
-
-import BaseLayout from "@/layouts/BaseLayout.astro";
 import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
-import { NotificationsFeed } from "@/components/NotificationsFeed";
-import { SendTestNotification } from "@/components/settings/send-test-notification";
+import { EmptyState } from "@/components/common";
+import BaseLayout from "@/layouts/BaseLayout.astro";
 ---
 
-<BaseLayout
-  title="Notifications"
-  description="Notification inbox backed by the notifications API."
->
+<BaseLayout title="Notifications" description="Updates that need your attention.">
   <PageBody>
-    <PageToolbar
-      title="Notifications"
-      description="Events from tasks, projects and the system. Mark items read or send a test to see one arrive."
-    />
-    <div class="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_26rem]">
-      <NotificationsFeed client:load />
-      <div class="min-w-0">
-        <SendTestNotification client:load />
-      </div>
-    </div>
+    <PageToolbar title="Notifications" description="Follow meaningful changes without losing sight of the decisions that matter." />
+    <EmptyState title="Notifications is being built" description="Maestro epic cs-fe-12 will surface shopper-agent updates and actions here." />
   </PageBody>
 </BaseLayout>

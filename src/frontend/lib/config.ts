@@ -9,11 +9,13 @@
  * Adding a page = adding an entry here. Nothing else reads the route table.
  */
 import {
+  BrainIcon,
   BellIcon,
   BookOpenIcon,
   BotIcon,
   BracesIcon,
   ChartColumnIcon,
+  ClipboardCheckIcon,
   FilesIcon,
   FlaskConicalIcon,
   FolderKanbanIcon,
@@ -21,9 +23,13 @@ import {
   HouseIcon,
   InboxIcon,
   LayoutDashboardIcon,
+  LightbulbIcon,
   ListChecksIcon,
   NotebookPenIcon,
+  PlayIcon,
+  SearchIcon,
   SettingsIcon,
+  TargetIcon,
   WrenchIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -41,93 +47,91 @@ export type NavItem = {
 export type NavGroup = { label: string; items: NavItem[] };
 
 export const siteConfig = {
-  name: "Cloudflare Edge Showcase",
-  shortName: "Edge Showcase",
+  name: "core-shopping",
+  shortName: "core-shopping",
   description:
-    "Cloudflare Worker template: Astro + React on ReUI Pro blocks, D1 via Hono, AI chat through the core-guardian service binding",
+    "Personal shopper agents: goals, findings, review, and what the agents learned.",
   url: "https://example.com",
-  links: { github: "https://github.com/jmbish04/core-template-cfw-assets-astro-shadcn" },
+  links: { github: "https://github.com/jmbish04/core-shopping" },
 };
 
 /**
  * The twelve AI chat surfaces, each a real ReUI Pro `ai-chat-*` block wired to
  * core-guardian and the D1 thread store. Exported on its own because the
- * `/chat` gallery page renders the same list as cards.
+ * `/lab/chat` gallery page renders the same list as cards.
  */
 export const chatSurfaces: Array<NavChild & { block: string }> = [
-  { href: "/chat/copilot", label: "Copilot", block: "ai-chat-1", description: "Streaming transcript with a recent-chats rail." },
-  { href: "/chat/docked", label: "Docked draft", block: "ai-chat-2", description: "Assistant beside a live PlateJS document; insert replies into the draft." },
-  { href: "/chat/welcome", label: "Welcome", block: "ai-chat-3", description: "Zero state with prompt starters and a docked composer." },
-  { href: "/chat/sidebar", label: "Quoted reply", block: "ai-chat-4", description: "Floating panel that answers a sentence you select." },
-  { href: "/chat/sources", label: "Scoped sources", block: "ai-chat-5", description: "Connected workspace data sets the answer scope." },
-  { href: "/chat/agentic", label: "Agentic run", block: "ai-chat-6", description: "An editable plan the assistant executes step by step." },
-  { href: "/chat/compare", label: "Compare", block: "ai-chat-7", description: "One prompt against two routing profiles, side by side." },
-  { href: "/chat/voice", label: "Voice", block: "ai-chat-8", description: "Speak the question; the answer picks its own shape." },
-  { href: "/chat/branching", label: "Branching", block: "ai-chat-9", description: "Regenerate forks the turn instead of overwriting it." },
-  { href: "/chat/scoped", label: "Structured", block: "ai-chat-10", description: "Source-grounded replies as tables, code and comparisons." },
-  { href: "/chat/stage", label: "Stage", block: "ai-chat-11", description: "Framed answer receipts carrying model, latency and cost." },
-  { href: "/chat/support", label: "Docs support", block: "ai-chat-12", description: "Answers only from the knowledge base, showing what it read." },
+  { href: "/lab/chat/copilot", label: "Copilot", block: "ai-chat-1", description: "Streaming transcript with a recent-chats rail." },
+  { href: "/lab/chat/docked", label: "Docked draft", block: "ai-chat-2", description: "Assistant beside a live PlateJS document; insert replies into the draft." },
+  { href: "/lab/chat/welcome", label: "Welcome", block: "ai-chat-3", description: "Zero state with prompt starters and a docked composer." },
+  { href: "/lab/chat/sidebar", label: "Quoted reply", block: "ai-chat-4", description: "Floating panel that answers a sentence you select." },
+  { href: "/lab/chat/sources", label: "Scoped sources", block: "ai-chat-5", description: "Connected workspace data sets the answer scope." },
+  { href: "/lab/chat/agentic", label: "Agentic run", block: "ai-chat-6", description: "An editable plan the assistant executes step by step." },
+  { href: "/lab/chat/compare", label: "Compare", block: "ai-chat-7", description: "One prompt against two routing profiles, side by side." },
+  { href: "/lab/chat/voice", label: "Voice", block: "ai-chat-8", description: "Speak the question; the answer picks its own shape." },
+  { href: "/lab/chat/branching", label: "Branching", block: "ai-chat-9", description: "Regenerate forks the turn instead of overwriting it." },
+  { href: "/lab/chat/scoped", label: "Structured", block: "ai-chat-10", description: "Source-grounded replies as tables, code and comparisons." },
+  { href: "/lab/chat/stage", label: "Stage", block: "ai-chat-11", description: "Framed answer receipts carrying model, latency and cost." },
+  { href: "/lab/chat/support", label: "Docs support", block: "ai-chat-12", description: "Answers only from the knowledge base, showing what it read." },
 ];
 
 export const navGroups: NavGroup[] = [
   {
-    label: "Workspace",
+    label: "Shopper",
     items: [
       { href: "/", label: "Overview", icon: HouseIcon },
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
-      { href: "/analytics", label: "Analytics", icon: ChartColumnIcon },
+      { href: "/goals", label: "Goals", icon: TargetIcon },
+      { href: "/review", label: "Review", icon: ClipboardCheckIcon },
+      { href: "/notifications", label: "Notifications", icon: BellIcon },
+      { href: "/findings", label: "Findings", icon: SearchIcon },
+      { href: "/proposals", label: "Proposals", icon: LightbulbIcon },
+      { href: "/brain", label: "Brain", icon: BrainIcon },
+      { href: "/runs", label: "Runs", icon: PlayIcon },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [{ href: "/settings", label: "Settings", icon: SettingsIcon }],
+  },
+  {
+    label: "Lab",
+    items: [
+      { href: "/lab", label: "Lab home", icon: FlaskConicalIcon },
+      { href: "/lab/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
+      { href: "/lab/analytics", label: "Analytics", icon: ChartColumnIcon },
+      { href: "/lab/projects", label: "Projects", icon: FolderKanbanIcon },
       {
-        href: "/projects",
-        label: "Projects",
-        icon: FolderKanbanIcon,
-        children: [
-          { href: "/projects", label: "All projects" },
-          { href: "/projects/new", label: "New project" },
-        ],
-      },
-      {
-        href: "/tasks",
+        href: "/lab/tasks",
         label: "Tasks",
         icon: ListChecksIcon,
         children: [
-          { href: "/tasks", label: "Tree grid" },
-          { href: "/tasks/board", label: "Board" },
+          { href: "/lab/tasks", label: "Tree grid" },
+          { href: "/lab/tasks/board", label: "Board" },
         ],
       },
-      { href: "/files", label: "Files", icon: FilesIcon },
-      { href: "/notes", label: "Notes", icon: NotebookPenIcon },
-      { href: "/inbox", label: "Inbox", icon: InboxIcon },
-    ],
-  },
-  {
-    label: "AI",
-    items: [
+      { href: "/lab/files", label: "Files", icon: FilesIcon },
+      { href: "/lab/inbox", label: "Inbox", icon: InboxIcon },
+      { href: "/lab/notes", label: "Notes", icon: NotebookPenIcon },
+      { href: "/lab/activity", label: "Activity", icon: HistoryIcon },
       {
-        href: "/chat",
+        href: "/lab/chat",
         label: "Chat",
         icon: BotIcon,
-        children: [{ href: "/chat", label: "All surfaces" }, ...chatSurfaces.map(({ href, label }) => ({ href, label }))],
+        children: [{ href: "/lab/chat", label: "All surfaces" }, ...chatSurfaces.map(({ href, label }) => ({ href, label }))],
       },
-    ],
-  },
-  {
-    label: "System",
-    items: [
-      { href: "/activity", label: "Activity", icon: HistoryIcon },
-      { href: "/notifications", label: "Notifications", icon: BellIcon },
+      { href: "/lab/notifications", label: "Notifications", icon: BellIcon },
       {
-        href: "/settings",
+        href: "/lab/settings",
         label: "Settings",
         icon: SettingsIcon,
         children: [
-          { href: "/settings/preferences", label: "Preferences" },
-          { href: "/settings/notifications", label: "Notifications" },
-          { href: "/settings/webhooks", label: "Webhooks" },
-          { href: "/settings/advanced", label: "Advanced" },
+          { href: "/lab/settings/preferences", label: "Preferences" },
+          { href: "/lab/settings/notifications", label: "Notifications" },
+          { href: "/lab/settings/webhooks", label: "Webhooks" },
+          { href: "/lab/settings/advanced", label: "Advanced" },
         ],
       },
-      { href: "/showcase/utilities", label: "Data utilities", icon: FlaskConicalIcon },
-      { href: "/playbook", label: "Playbook", icon: WrenchIcon },
+      { href: "/lab/showcase/utilities", label: "Utilities", icon: WrenchIcon },
     ],
   },
 ];

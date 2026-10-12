@@ -18,9 +18,39 @@
 export async function getSecret(env: Env, key: string): Promise<string | undefined> {
   const envVal = (env as Record<string, any>)[key];
   if (envVal && typeof envVal?.get === "function") {
-    return await envVal.get();
+    try {
+      const resolved = await envVal.get();
+      if (typeof resolved === "string" && resolved.length > 0) return resolved;
+    } catch {
+      // Local dev: miniflare creates the Secret Store binding but no VALUE, so
+      // .get() throws `Secret "<name>" not found`. In production it resolves and
+      // this branch never runs. Falling through to <NAME>_DEV rather than <NAME>
+      // because the binding OBJECT shadows a plain var of the same name — and a
+      // .dev.vars entry does not populate a Secret Store binding at all.
+      // Supply it with CLOUDFLARE_INCLUDE_PROCESS_ENV=true plus <NAME>_DEV in
+      // the environment; see .claude/launch.json, which reads it from the
+      // tokens CLI so no credential is ever written to disk.
+    }
+    const dev = (env as Record<string, any>)[`${key}_DEV`];
+    return typeof dev === "string" && dev.length > 0 ? dev : undefined;
   }
   return envVal;
+}
+
+/**
+ * Read a secret or throw an actionable error. Mirrors `requireSecret` in the
+ * canonical tokens SDK (~/bin/tokens_cli/sdk/secrets.ts).
+ *
+ * @throws Error naming the binding to add when the secret does not resolve.
+ */
+export async function requireSecret(env: Env, name: string): Promise<string> {
+  const value = await getSecret(env, name);
+  if (!value) {
+    throw new Error(
+      `[secrets] '${name}' did not resolve. Add it under "secrets_store_secrets" in wrangler.jsonc and run wrangler types.`,
+    );
+  }
+  return value;
 }
 
 /**

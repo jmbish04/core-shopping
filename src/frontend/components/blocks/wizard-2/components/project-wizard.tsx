@@ -181,7 +181,7 @@ export function ProjectWizard() {
       setSubmitError(null);
       try {
         await createProject(draft);
-        window.location.assign("/projects");
+        window.location.assign("/lab/projects");
       } catch (e) {
         setSubmitError(
           e instanceof ApiError ? e.message : "Could not create the project. Try again.",

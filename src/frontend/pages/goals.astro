@@ -1,0 +1,23 @@
+---
+/**
+ * `/goals` — the Goals console (maestro cs-fe-2-1).
+ *
+ * The island is `client:only="react"` on purpose: it reads the view (search,
+ * filters, health tab, sort, page) out of the URL on mount, so server-rendering
+ * it would emit markup for a different view than the one the URL asks for and
+ * hydration would have to throw it away.
+ */
+import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { GoalsConsole } from "@/components/goals/goals-console";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Goals" description="Define what you want your shopper agents to find.">
+  <PageBody>
+    <PageToolbar
+      title="Goals"
+      description="Set the outcomes, preferences, and constraints that guide every search."
+    />
+    <GoalsConsole client:only="react" />
+  </PageBody>
+</BaseLayout>

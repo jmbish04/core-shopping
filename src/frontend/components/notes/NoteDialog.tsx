@@ -26,13 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { OptionSelect } from "@/components/ui/option-select";
 import { apiSend, ApiError } from "@/lib/api";
 import { PlateEditor, bodyToSnippet } from "@/components/notes";
 
@@ -155,22 +149,14 @@ export function NoteDialog({ trigger, note, onSaved }: NoteDialogProps) {
 
             <div className="grid gap-2">
               <Label>Project</Label>
-              <Select
+              <OptionSelect
                 value={projectId || "__none__"}
-                onValueChange={(v) => setProjectId(v === "__none__" ? "" : String(v))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="No project" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No project</SelectItem>
-                  {projectOptions.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={[{ value: "__none__", label: "No project" }, ...projectOptions]}
+                ariaLabel="Project"
+                size="default"
+                className="w-full"
+                onChange={(v) => setProjectId(v === "__none__" ? "" : v)}
+              />
             </div>
           </div>
 
