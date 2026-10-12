@@ -1,19 +1,59 @@
 # core-shopping — session handoff
 
-Updated 2026-10-12 (second session, at hand-off). Branch
-`claude/core-shopping-m2-continue-bfd492` is **merged to `main`** — the first
-merge this project has had, which is also what finally exercises the Workers
-Builds path that `cs-be-7-4` has been waiting on.
+Updated 2026-10-12 (third session, at hand-off). Everything below is merged to
+`main` (latest `0a55885`, PR #9), built by Workers Builds, and probed live.
+This session ran on the Linux farm box (`claude-farm`); the Mac tree is
+reachable from there with `ssh mac`, and `/Volumes/Projects` on the farm is a
+local link to `/home/colby/projects`, not the Mac.
 
-**Start by checking that build**, not by assuming it: `workers_builds_list` for
-`core-shopping`, then `workers_build_logs_get` if it failed. A merge is not a
-deploy until the build says so.
+**Start by checking the newest build**, not by assuming it:
+`workers_builds_list` for `core-shopping`. A merge is not a deploy until the
+build says so. The Builds REST API refuses every account token on this machine
+(`12006 Invalid token`); the self-hosted Cloudflare API MCP
+(`cloudflare-api-mcp.hacolby.workers.dev/mcp`, bearer `WORKER_API_KEY`) works,
+and so does reading the `Workers Builds` check run on the commit in GitHub.
 
-The previous branch, `claude/colby-maestro-shopping-plan-40e575`, ends at the
-PR #5 merge (`2d6f5e5`) and is not being worked on. This branch continues from
-it; the session that owned it confirmed it was finished before anything moved.
+## This session (2026-10-12, third)
 
-## Where this stands
+- **Build check.** The M2 merge (`0ea4e27`) deployed. The later briefing-sync
+  build (`2347c34`) failed on a Cloudflare API `504` during `wrangler deploy`,
+  not on code; a manual rebuild passed.
+- **`cs-fe-1-1` Overview KPI strip — done (PR #7).** `/` renders five tiles from
+  `/api/dashboard/overview`, adapted from `chart-2`. Unknown values are an em
+  dash with the server's reason; no badge without a baseline; the backlog's
+  colour is inverted; only the runs tile has a sparkline (the one real daily
+  series). `accept_rate` and a "target" are not drawn: FE-1 does not list the
+  first, and the payload has no target.
+- **`cs-fe-10-1` Runs queue — done (PR #8).** `/runs` is the run queue from
+  `solution-agents-2`: grouped by status in triage order, attention filter
+  (failed, running, quality < 50%, succeeded-but-unscored), agent and goal
+  filters, URL state. `?q=` now searches `summary` too (closes the `cs-be-2-3`
+  follow-up). `pnpm run verify:runs` is new: the real `listRuns()` query against
+  real Postgres with rows seeded in a rolled-back transaction.
+- **`5492781d5118` read-after-write health check — done (PR #9).**
+  `postgres_read_after_write` primes, writes and reads back on three separate
+  connections, using new table `health_probes` (migration `0002`, applied).
+  Proven live: a throwaway Hyperdrive config with caching on turned it red 3 of
+  3 times while the old roundtrip check stayed green. Throwaway deleted.
+- **Filed `b0da7b27fea5`:** every page requests `http://localhost:4321/favicon.svg`
+  because `astro.config.ts` falls back to localhost when `SITE` is unset.
+
+## Do these next
+
+1. **`cs-fe-1-2` Run throughput and incidents** — `runs_per_day` is already in
+   the Overview payload, dense by outcome. Bars over time are vertical here
+   (time x-axis), which the chart rule allows.
+2. **`cs-fe-1-3` Per-goal run health strips** — `goal_strips` is in the payload.
+3. **`cs-fe-1-4` Activity feed and needs-review call to action** —
+   `review_backlog` and `recent_proposals` are in the payload.
+4. **`cs-fe-10-2` Run detail** — `/api/runs/{id}` is live; the queue rows have
+   no link yet because the page does not exist. Add the link with the page.
+5. **`b0da7b27fea5`** favicon/canonical origin (small).
+
+The Overview island (`components/overview/overview-dashboard.tsx`) fetches the
+payload once; each FE-1 section should take its slice from there, not refetch.
+
+## Where this stands (as of the second session)
 
 **M1 is complete.** M2 is in flight.
 
@@ -39,7 +79,7 @@ throughout a real outage of correctness.
   under `/lab/*` with nothing deleted, 9 shopper routes rendering real empty
   states, radar icon set serving.
 
-## Done since the last handoff
+## Done in the second session
 
 - **PR #5 merged** (`2d6f5e5`) — the Runs API, `cs-be-2-3`, now `done`.
   `GET /api/runs` and `/api/runs/{id}` are live and probed.
@@ -69,20 +109,6 @@ say so once and move on. It blocks nothing: every block FE-1 names is already
 installed under `src/frontend/components/blocks/`, and the registry takes the
 key over plain HTTPS if you need a new one.
 
-## Do these next
-
-1. **`cs-fe-1-1` Overview KPI strip.** Its contract and endpoint are both live
-   and probed, and the payload already carries everything FE-1 asks for:
-   KPI tiles with deltas, `runs_per_day` dense by outcome, per-goal last-20-run
-   strips, the review backlog and recent proposals. Blocks are clear.
-2. **`cs-fe-10-1` Runs queue**, which `GET /api/runs` now backs. One
-   follow-up recorded on `cs-be-2-3` first: `?q=` searches `agentRuns.model`
-   only, and `summary` belongs in `searchColumns` before that screen ships.
-3. **`5492781d5118`** — a health check that commits a write and reads it back
-   on a *separate request*. The existing `postgres_write_roundtrip` check was
-   green for the whole hour the console was serving month-old state, because it
-   writes and reads inside one transaction.
-
 ## Hyperdrive caches reads, and it bit this project
 
 **Measured and fixed 2026-10-10. Full record:
@@ -100,7 +126,7 @@ Two things to carry rather than rediscover:
   a list's `items` stayed fresh while the same response's `total` (a plain
   count) was stale, and the healthy tab emptied correctly while the paused tab
   stayed empty. Three probe rounds went into suspecting the filter compiler.
-- **Do not let caching back on** without the check in `5492781d5118`. And if
+- **Do not let caching back on.** The check from `5492781d5118` now exists and will turn `/api/health` red if it is. And if
   `stale` is ever precomputed into a column, those queries become cacheable and
   this returns on the surfaces where it is hardest to see.
 
@@ -160,9 +186,9 @@ router; that has been the only shared file so far and it has not collided.
 ## Verification commands
 
 ```bash
-cd /Volumes/Projects/workers/core-shopping/.claude/worktrees/core-shopping-m2-continue-bfd492
-pnpm run typecheck && node scripts/ui-guard.mjs && pnpm run selfcheck   # 16 suites
+pnpm run typecheck && node scripts/ui-guard.mjs && pnpm run selfcheck   # 19 suite files
 pnpm run verify:dashboard             # the Overview SQL against real Postgres
+pnpm run verify:runs                  # the Runs queue SQL against real Postgres
 bash scripts/check.sh                 # build into a throwaway dir
 
 # `pnpm run deploy` needs the Cloudflare token in the environment or the D1
@@ -183,7 +209,6 @@ launch config reads both from the tokens CLI.
   up (`com.humuf.browseros` LaunchAgent, self-heals in ~4s) and BrowserOS on
   VM 130 is healthy with 24 tools. It is the right browser for any task needing
   his logged-in shopping accounts.
-- `cs-be-7-4` stays in review until a merge to `main` proves the CI path.
 - The `browseros_vpc` health check in core-pve has never been forced red; its
   positive path is verified live.
 - Two template proposals are filed in `colby-ecosystem`: the login open
