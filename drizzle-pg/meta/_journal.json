@@ -15,6 +15,13 @@
       "when": 1791482396256,
       "tag": "0001_happy_jigsaw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791841167961,
+      "tag": "0002_tough_tomorrow_man",
+      "breakpoints": true
     }
   ]
 }
