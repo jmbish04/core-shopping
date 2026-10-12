@@ -1,8 +1,13 @@
 # core-shopping — session handoff
 
-Updated 2026-10-10 (second session). Branch
-`claude/core-shopping-m2-continue-bfd492`, pushed, head `9cd9fca`. Nothing is
-merged to `main` yet.
+Updated 2026-10-12 (second session, at hand-off). Branch
+`claude/core-shopping-m2-continue-bfd492` is **merged to `main`** — the first
+merge this project has had, which is also what finally exercises the Workers
+Builds path that `cs-be-7-4` has been waiting on.
+
+**Start by checking that build**, not by assuming it: `workers_builds_list` for
+`core-shopping`, then `workers_build_logs_get` if it failed. A merge is not a
+deploy until the build says so.
 
 The previous branch, `claude/colby-maestro-shopping-plan-40e575`, ends at the
 PR #5 merge (`2d6f5e5`) and is not being worked on. This branch continues from
@@ -46,6 +51,23 @@ throughout a real outage of correctness.
   `GET /api/dashboard/overview` is live. **`cs-fe-1-1` is unblocked.**
 - **Hyperdrive query caching disabled** — see the next section. This one
   changes the consistency model every query in this project inherits.
+
+## Environment note before you start
+
+The ReUI MCP (`mcp__reui__*`) may be down with `AUTH_HEADER_REJECTED`. It is not
+a licence problem and not worth debugging again: `~/.claude.json` expands
+`${REUI_LICENSE_KEY}` from the **app's own process environment**, and on a boot
+where the app launches before any terminal it inherits an env without the key.
+Measured 2026-10-10: boot 23:22:19, app 23:26:04, no key in any of the six app
+processes while the launchd domain had it.
+
+Fixed for future launches by `~/Library/LaunchAgents/com.colby.agent-env.plist`
+(+ `~/.config/agent-env/setenv.sh`, which resolves from the tokens CLI at login
+and writes no secret to disk; `~/.config/agent-env/setenv.log` records each run).
+If reui is still down in your session, the app has not been relaunched since —
+say so once and move on. It blocks nothing: every block FE-1 names is already
+installed under `src/frontend/components/blocks/`, and the registry takes the
+key over plain HTTPS if you need a new one.
 
 ## Do these next
 
