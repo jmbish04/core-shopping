@@ -1,12 +1,18 @@
 ---
+/**
+ * `/` — the shopper Overview (maestro epic cs-fe-1).
+ *
+ * `client:only="react"`: every figure comes from `GET /api/dashboard/overview`
+ * at view time, so there is nothing true to server-render but the skeleton.
+ */
 import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
-import { EmptyState } from "@/components/common";
+import { OverviewDashboard } from "@/components/overview/overview-dashboard";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 ---
 
 <BaseLayout title="Overview" description="Your personal shopper workspace.">
   <PageBody>
     <PageToolbar title="Overview" description="A clear view of what your shopper agents are working toward." />
-    <EmptyState title="Overview is being built" description="Maestro epic cs-fe-1 will bring your shopping goals, active work, and next decisions together here." />
+    <OverviewDashboard client:only="react" />
   </PageBody>
 </BaseLayout>
