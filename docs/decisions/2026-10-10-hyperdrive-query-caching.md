@@ -117,3 +117,22 @@ Applied 2026-10-10 by the session that found it, under the standing
 authorization for Cloudflare configuration. Recorded here because it changes
 the consistency model every future query in this project inherits, which is not
 something a later session should have to rediscover from a flaky switch.
+
+## Follow-up 2026-10-12: the setting is now enforced by a check
+
+`/api/health` now runs `postgres_read_after_write` (maestro `5492781d5118`,
+`src/backend/health/read-after-write.ts`). On three separate connections it
+reads the `health_probes` row, overwrites it with a fresh nonce, and reads it
+back with the exact same SQL. A cache that does not invalidate on write answers
+the second read with the primed value, and the check fails the verdict.
+
+Measured on 2026-10-12, same build, two preview versions:
+
+| Hyperdrive config | `postgres_read_after_write` | `postgres_write_roundtrip` | verdict |
+| --- | --- | --- | --- |
+| `a6e0ef9b…` (production, caching disabled) | ok, 2 of 2 runs | ok | healthy |
+| throwaway, caching on (`max_age` 60) | **fail, 3 of 3 runs** | ok | **unhealthy** |
+
+The throwaway config was deleted after the test. So if caching is ever turned
+back on, or a second cached config is bound, or `stale` becomes a stored
+column, the health verdict goes red instead of the console quietly lying.

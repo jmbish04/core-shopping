@@ -16,3 +16,4 @@ export * from "@/backend/pg/schemas/proposals/proposals";
 export * from "@/backend/pg/schemas/proposals/trips";
 export * from "@/backend/pg/schemas/hitl/reviews";
 export * from "@/backend/pg/schemas/alerts/alerts";
+export * from "@/backend/pg/schemas/ops/health-probes";

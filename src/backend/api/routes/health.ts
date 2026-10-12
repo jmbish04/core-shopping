@@ -22,6 +22,7 @@ import { guardianProject } from "@/backend/ai/guardian";
 import { sql } from "drizzle-orm";
 import { withPg } from "@/backend/pg/client";
 import { ledgerVerdict, newestJournalWhen } from "@/backend/pg/ledger";
+import { readAfterWriteProbe } from "@/backend/health/read-after-write";
 import pgJournal from "../../../../drizzle-pg/meta/_journal.json";
 
 // ---------------------------------------------------------------------------
@@ -74,6 +75,7 @@ class HealthCoordinator {
       this.checkGuardianProject(),
       this.checkCoreGuardian(),
       this.checkPostgres(),
+      this.checkReadAfterWrite(),
     ]).then((r) => r.flat());
 
     const durationMs = Date.now() - start;
@@ -275,6 +277,35 @@ class HealthCoordinator {
           durationMs: Date.now() - start,
         },
       ];
+    }
+  }
+
+  /**
+   * A committed write, read back on a separate connection (maestro
+   * 5492781d5118). Fails the verdict when a query cache answers the read with
+   * the value from before the write — the failure `postgres_write_roundtrip`
+   * cannot see, because it reads inside its own transaction.
+   */
+  private async checkReadAfterWrite(): Promise<CheckResult> {
+    const start = Date.now();
+    try {
+      const result = await readAfterWriteProbe((fn) => withPg(this.env, fn));
+      return {
+        category: "database",
+        name: "postgres_read_after_write",
+        status: result.status,
+        message: result.message,
+        details: result.details,
+        durationMs: Date.now() - start,
+      };
+    } catch (error) {
+      return {
+        category: "database",
+        name: "postgres_read_after_write",
+        status: "fail",
+        message: error instanceof Error ? error.message : "Unknown read-after-write failure",
+        durationMs: Date.now() - start,
+      };
     }
   }
 
