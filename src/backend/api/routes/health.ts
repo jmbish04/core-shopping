@@ -22,6 +22,7 @@ import { guardianProject } from "@/backend/ai/guardian";
 import { sql } from "drizzle-orm";
 import { withPg } from "@/backend/pg/client";
 import { ledgerVerdict, newestJournalWhen } from "@/backend/pg/ledger";
+import { coreBrowserStub, probeCoreBrowser } from "@/backend/browser";
 import { readAfterWriteProbe } from "@/backend/health/read-after-write";
 import pgJournal from "../../../../drizzle-pg/meta/_journal.json";
 
@@ -76,6 +77,7 @@ class HealthCoordinator {
       this.checkCoreGuardian(),
       this.checkPostgres(),
       this.checkReadAfterWrite(),
+      this.checkCoreBrowser(),
     ]).then((r) => r.flat());
 
     const durationMs = Date.now() - start;
@@ -307,6 +309,18 @@ class HealthCoordinator {
         durationMs: Date.now() - start,
       };
     }
+  }
+
+  /**
+   * core-browser over the `CORE_BROWSER` service binding. Severity is in
+   * `browser/probe.ts`: a missing or broken binding fails the verdict; the
+   * agent-browser VM being off, or core-browser's cost guard being tripped,
+   * degrades it.
+   */
+  private async checkCoreBrowser(): Promise<CheckResult> {
+    const start = Date.now();
+    const result = await probeCoreBrowser(coreBrowserStub(this.env));
+    return { category: "binding", name: "core_browser_binding", ...result, durationMs: Date.now() - start };
   }
 
   private async getRunById(runId: string) {

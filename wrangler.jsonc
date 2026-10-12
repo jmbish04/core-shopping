@@ -41,6 +41,15 @@
       // local dev exercises the real AI router.
       "remote": true,
     },
+    {
+      // core-browser drives BrowserOS on the agent-browser VM (Proxmox VM 130)
+      // through a tunnel only it holds. Call it through src/backend/browser/,
+      // never directly. `remote: true` for the same reason as CORE_GUARDIAN.
+      "binding": "CORE_BROWSER",
+      "service": "core-browser",
+      "entrypoint": "CoreBrowserRpc",
+      "remote": true,
+    },
   ],
   "migrations": [
     // v1 captures the original deployed-class set so wrangler can apply

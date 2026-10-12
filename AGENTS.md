@@ -180,6 +180,18 @@ decoration has no real backing, remove the decoration — do not fake it.
     Node's strip-only TypeScript erases `import type` but cannot resolve an
     extensionless value import. That is why the SSE parser lives in
     `guardian/stream-read.ts`, separate from `guardian/stream.ts`.
+- **Browser = core-browser, nothing else.** The `CORE_BROWSER` service binding
+  (`service: core-browser`, `entrypoint: CoreBrowserRpc`, `remote: true`) is the
+  only door to a real browser: core-browser drives BrowserOS on the
+  `agent-browser` VM (Proxmox VM 130) through a tunnel only it holds, behind its
+  cost guard, job queue and single-tenant lease. Import from
+  **`src/backend/browser/`** (`browserSubmit`, `browserResult`, `browserToolCall`,
+  `browserHealth`); `types.ts` mirrors core-browser's `src/rpc.ts`, so update it
+  when that file changes. Every `submit` creates a job that counts against
+  core-browser's daily ceiling, so never call it in an unbounded loop.
+  `/api/health` runs `core_browser_binding`: a missing or broken binding fails
+  the verdict; the VM being off or the cost guard tripped only degrades it
+  (`browser/probe.ts`, pinned by `scripts/selfcheck-core-browser.mjs`).
 - **Chat is one backend behind twelve faces.** `POST /api/chat/stream` is the
   endpoint; `src/frontend/lib/chat.ts` (`useChatThread`) is the only client.
   SSE events, all measured against the live router: `meta`, `routed`
