@@ -42,6 +42,8 @@ registerHooks({
 
 const { aggregateGoalIds, computeRunDurationMs, orderRunStatusGroups, RUN_SEARCH_COLUMNS } =
   await import("../src/backend/api/routes/shopping/runs.ts");
+const { runDetailQuery } = await import("../src/backend/api/routes/shopping/runs.ts");
+const { drizzle } = await import("drizzle-orm/node-postgres");
 const { compileSearch } = await import("../src/backend/api/list/index.ts");
 const { PgDialect } = await import("drizzle-orm/pg-core");
 
@@ -86,5 +88,19 @@ assert.deepEqual(
   ["running", "failed", "succeeded", "abandoned", "future"],
 );
 assert.equal(groups[0].key, "succeeded", "ordering does not mutate the caller's array");
+
+// Run detail: every correlated subquery must bind to the OUTER run. Drizzle
+// writes a bare "id" inside a single-table select, which binds to the inner
+// table whenever it has an id column (run_events, mcp_tool_calls, sightings,
+// proposals all do); the detail then came back empty for every run.
+const detailSql = runDetailQuery(drizzle({}), "00000000-0000-4000-8000-000000000000").toSQL().sql;
+for (const inner of ["run_events", "mcp_tool_calls", "sightings", "proposals", "run_goals"]) {
+  assert.match(
+    detailSql,
+    new RegExp(`from "${inner}"\\s+where "run_id" = "agent_runs"\\."id"`),
+    `the ${inner} subquery does not correlate to agent_runs.id`,
+  );
+}
+assert.doesNotMatch(detailSql, /"run_id" = "id"/, "a subquery compares run_id with a bare id");
 
 console.log("selfcheck-runs-api: ok");
