@@ -192,6 +192,14 @@ decoration has no real backing, remove the decoration — do not fake it.
   `/api/health` runs `core_browser_binding`: a missing or broken binding fails
   the verdict; the VM being off or the cost guard tripped only degrades it
   (`browser/probe.ts`, pinned by `scripts/selfcheck-core-browser.mjs`).
+  **Browser runs** (cs-be-6-6): `POST /api/goals/{id}/browse` turns a goal into
+  one core-browser job and an `agent_runs` row (`client = browser`; the job id
+  lives in the run's `browser.job` event). `POST /api/runs/{id}/sync` copies new
+  job events into `run_events` and finishes the run. The gate (`gateBrowse` in
+  `browser/runs.ts`) refuses inactive goals, a second running job per goal, the
+  `BROWSER_DAILY_RUN_CAP` var, and a tripped cost guard. Most findings in this
+  app come from a real browser; new scraping work builds on these two routes
+  rather than calling `browserSubmit` directly.
 - **Chat is one backend behind twelve faces.** `POST /api/chat/stream` is the
   endpoint; `src/frontend/lib/chat.ts` (`useChatThread`) is the only client.
   SSE events, all measured against the live router: `meta`, `routed`
