@@ -12,6 +12,7 @@
  * | `types.ts` | The wire contract, mirrored from core-browser    |
  * | `rpc.ts`   | The typed cast of the binding, and its wrappers  |
  * | `probe.ts` | The `core_browser_binding` health check          |
+ * | `runs.ts`  | Browser runs: goal to prompt, job to run (cs-be-6-6) |
  *
  * @example
  * import { browserSubmit, browserResult } from "@/backend/browser";
@@ -21,6 +22,20 @@
  */
 
 export { browserHealth, browserResult, browserSubmit, browserToolCall, coreBrowserStub } from "./rpc";
+export {
+  BROWSE_PROMPT_MAX_CHARS,
+  BROWSER_JOB_EVENT_KIND,
+  DEFAULT_BROWSER_DAILY_RUN_CAP,
+  buildBrowsePrompt,
+  dailyRunCap,
+  eventsToCopy,
+  gateBrowse,
+  jobSummary,
+  runStatusForJob,
+  type BrowseCriterion,
+  type BrowseGoal,
+  type BrowseRefusal,
+} from "./runs";
 export { CORE_BROWSER_PROBE_TIMEOUT_MS, probeCoreBrowser, type CoreBrowserProbeResult } from "./probe";
 export type {
   BrowserCostGuard,

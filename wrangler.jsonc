@@ -155,6 +155,9 @@
     // Set by scripts/set-guardian-project.mjs on every deploy: core-guardian
     // attributes this Worker's spend and routing decisions to this name.
     "GUARDIAN_PROJECT": "core-shopping",
+    // Browser runs (POST /api/goals/{id}/browse) allowed per UTC day, all goals.
+    // Each one is a core-browser job that spends its budget.
+    "BROWSER_DAILY_RUN_CAP": "20",
     "AI_GATEWAY_ID": "default-gateway",
     "MODEL_CHAT": "@cf/openai/gpt-oss-120b",
     "MODEL_EXTRACT": "@cf/openai/gpt-oss-120b",
