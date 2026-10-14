@@ -10,7 +10,8 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, getTableName, sql, type SQL } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 import {
   ListQueryError,
@@ -108,10 +109,25 @@ export function orderRunStatusGroups(groups: RunStatusGroup[]): RunStatusGroup[]
   );
 }
 
+/**
+ * A column written as `"table"."column"`.
+ *
+ * Drizzle writes a column as a bare `"column"` inside a single-table select, so
+ * in a correlated subquery `${agentRuns.id}` becomes `"id"` and binds to the
+ * INNER table when that table has an `id` column too. The run detail then
+ * compared `run_events.run_id` with `run_events.id` and always came back empty.
+ * Every correlation to the outer run goes through this.
+ */
+function qualified(column: AnyPgColumn): SQL {
+  return sql`${sql.identifier(getTableName(column.table))}.${sql.identifier(column.name)}`;
+}
+
+const outerRunId = qualified(agentRuns.id);
+
 const goalIds = sql<string[]>`coalesce(
   (select array_agg(${runGoals.goalId} order by ${runGoals.goalId})
    from ${runGoals}
-   where ${runGoals.runId} = ${agentRuns.id}),
+   where ${runGoals.runId} = ${outerRunId}),
   array[]::uuid[]
 )`;
 
@@ -197,8 +213,15 @@ export function normalizeRun(row: RunListItem) {
   });
 }
 
-async function loadRunDetail(db: PgDb, id: string) {
-  const [row] = await db
+/**
+ * The run detail query, unexecuted, so a self-check can read its SQL.
+ *
+ * @param db - Drizzle client.
+ * @param id - Run id.
+ * @returns The select builder.
+ */
+export function runDetailQuery(db: PgDb, id: string) {
+  return db
     .select({
       ...runListSelection,
       events: sql<Array<Record<string, unknown>>>`coalesce(
@@ -207,7 +230,7 @@ async function loadRunDetail(db: PgDb, id: string) {
           'level', ${runEvents.level}, 'kind', ${runEvents.kind},
           'message', ${runEvents.message}, 'data', ${runEvents.data}
         ) order by ${runEvents.at}, ${runEvents.id})
-        from ${runEvents} where ${runEvents.runId} = ${agentRuns.id}),
+        from ${runEvents} where ${runEvents.runId} = ${outerRunId}),
         '[]'::jsonb
       )`,
       tool_calls: sql<Array<Record<string, unknown>>>`coalesce(
@@ -218,23 +241,27 @@ async function loadRunDetail(db: PgDb, id: string) {
           'latency_ms', ${mcpToolCalls.latencyMs}, 'error', ${mcpToolCalls.error},
           'at', ${mcpToolCalls.at}
         ) order by ${mcpToolCalls.at}, ${mcpToolCalls.id})
-        from ${mcpToolCalls} where ${mcpToolCalls.runId} = ${agentRuns.id}),
+        from ${mcpToolCalls} where ${mcpToolCalls.runId} = ${outerRunId}),
         '[]'::jsonb
       )`,
       sighting_ids: sql<string[]>`coalesce(
         (select array_agg(${sightings.id} order by ${sightings.seenAt}, ${sightings.id})
-         from ${sightings} where ${sightings.runId} = ${agentRuns.id}),
+         from ${sightings} where ${sightings.runId} = ${outerRunId}),
         array[]::uuid[]
       )`,
       proposal_ids: sql<string[]>`coalesce(
         (select array_agg(${proposals.id} order by ${proposals.createdAt}, ${proposals.id})
-         from ${proposals} where ${proposals.runId} = ${agentRuns.id}),
+         from ${proposals} where ${proposals.runId} = ${outerRunId}),
         array[]::uuid[]
       )`,
     })
     .from(agentRuns)
     .where(eq(agentRuns.id, id))
     .limit(1);
+}
+
+async function loadRunDetail(db: PgDb, id: string) {
+  const [row] = await runDetailQuery(db, id);
   if (!row) return null;
 
   const normalizedRun = normalizeRun(row);
