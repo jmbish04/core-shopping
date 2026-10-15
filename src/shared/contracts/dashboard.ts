@@ -26,7 +26,7 @@
 import { z } from "zod";
 
 import { Id, IsoDate, IsoDateTime } from "./common";
-import { GoalCategorySchema } from "./goals";
+import { AgentClientSchema, GoalCategorySchema } from "./goals";
 import { RunStatusSchema } from "./runs";
 import { ProposalKindSchema, ProposalStatusSchema } from "./proposals";
 
@@ -40,6 +40,8 @@ export const DASHBOARD_MAX_WINDOW_DAYS = 90;
 /** How many goals get a run strip, and how many proposals are listed. */
 export const DASHBOARD_STRIP_GOALS = 8;
 export const DASHBOARD_RECENT_PROPOSALS = 8;
+/** How many recent runs the Overview's incident list, queue preview and feed share. */
+export const DASHBOARD_RECENT_RUNS = 10;
 
 export const KPI_IDS = [
   "active_goals",
@@ -93,6 +95,8 @@ export const RunsPerDaySchema = z
     abandoned: z.number().int().nonnegative(),
     running: z.number().int().nonnegative(),
     total: z.number().int().nonnegative(),
+    /** How many of `total` were core-browser runs. A subset, not a fifth outcome. */
+    browser: z.number().int().nonnegative(),
   })
   .meta({ id: "DashboardRunsPerDay" });
 export type RunsPerDay = z.infer<typeof RunsPerDaySchema>;
@@ -106,8 +110,30 @@ export const StripRunSchema = z
     /** Null while the run is still going — not zero. */
     duration_ms: z.number().int().nonnegative().nullable(),
     quality_score: z.number().nullable(),
+    /** What the run says it did, for the strip's hover card. */
+    summary: z.string(),
+    /** Sightings the run recorded (the "findings" a strip bar reports). */
+    sightings_count: z.number().int().nonnegative(),
   })
   .meta({ id: "DashboardStripRun" });
+
+/** One recent run, for the incident list, the queue preview and the activity feed. */
+export const RecentRunSchema = z
+  .object({
+    id: Id,
+    client: AgentClientSchema,
+    status: RunStatusSchema,
+    summary: z.string(),
+    /** Why it failed, when it did. */
+    error: z.string().nullable(),
+    started_at: IsoDateTime,
+    finished_at: IsoDateTime.nullable(),
+    sightings_count: z.number().int().nonnegative(),
+    /** The first of the run's goals by title, or null for a run no goal owns. */
+    goal_title: z.string().nullable(),
+  })
+  .meta({ id: "DashboardRecentRun" });
+export type RecentRun = z.infer<typeof RecentRunSchema>;
 
 /**
  * A goal's last {@link DASHBOARD_STRIP_RUNS} runs.
@@ -176,6 +202,8 @@ export const DashboardOverviewSchema = z
     goal_strips: z.array(GoalRunStripSchema),
     review_backlog: ReviewBacklogSchema,
     recent_proposals: z.array(RecentProposalSchema),
+    /** The newest {@link DASHBOARD_RECENT_RUNS} runs, newest first, any goal. */
+    recent_runs: z.array(RecentRunSchema),
   })
   .meta({ id: "DashboardOverview" });
 export type DashboardOverview = z.infer<typeof DashboardOverviewSchema>;
@@ -331,6 +359,7 @@ export function denseDays(
       abandoned,
       running,
       total: succeeded + failed + abandoned + running,
+      browser: bucket.browser ?? 0,
     });
   }
   return out;

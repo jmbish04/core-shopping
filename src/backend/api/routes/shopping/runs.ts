@@ -21,6 +21,7 @@ import {
 } from "@/backend/api/list/index";
 import { withPg, type PgDb } from "@/backend/pg/client";
 import { sightings } from "@/backend/pg/schemas/catalog/sightings";
+import { goals } from "@/backend/pg/schemas/goals/goals";
 import { proposals } from "@/backend/pg/schemas/proposals/proposals";
 import { agentRuns, mcpToolCalls, runEvents, runGoals } from "@/backend/pg/schemas/runs/runs";
 import { ErrorEnvelopeSchema, ListQuerySchema, listEnvelope } from "@/shared/contracts/common";
@@ -254,13 +255,50 @@ export function runDetailQuery(db: PgDb, id: string) {
          from ${proposals} where ${proposals.runId} = ${outerRunId}),
         array[]::uuid[]
       )`,
+      // Same order as goal_ids (by goal id). Joined, so every column is qualified.
+      goals: sql<Array<Record<string, unknown>>>`coalesce(
+        (select jsonb_agg(jsonb_build_object('id', ${qualified(goals.id)}, 'title', ${qualified(goals.title)})
+                order by ${qualified(goals.id)})
+         from ${runGoals} join ${goals} on ${qualified(goals.id)} = ${qualified(runGoals.goalId)}
+         where ${qualified(runGoals.runId)} = ${outerRunId}),
+        '[]'::jsonb
+      )`,
+      sightings: sql<Array<Record<string, unknown>>>`coalesce(
+        (select jsonb_agg(jsonb_build_object(
+          'id', ${sightings.id}, 'entity_id', ${sightings.entityId}, 'title', ${sightings.title},
+          'url', ${sightings.url}, 'price_cents', ${sightings.priceCents}, 'currency', ${sightings.currency},
+          'agent_score', ${sightings.agentScore}, 'is_resighting', ${sightings.isResighting},
+          'seen_at', ${sightings.seenAt}
+        ) order by ${sightings.seenAt}, ${sightings.id})
+        from ${sightings} where ${sightings.runId} = ${outerRunId}),
+        '[]'::jsonb
+      )`,
+      proposals: sql<Array<Record<string, unknown>>>`coalesce(
+        (select jsonb_agg(jsonb_build_object(
+          'id', ${proposals.id}, 'kind', ${proposals.kind}, 'status', ${proposals.status},
+          'title', ${proposals.title}, 'match_score', ${proposals.matchScore},
+          'created_at', ${proposals.createdAt}
+        ) order by ${proposals.createdAt}, ${proposals.id})
+        from ${proposals} where ${proposals.runId} = ${outerRunId}),
+        '[]'::jsonb
+      )`,
     })
     .from(agentRuns)
     .where(eq(agentRuns.id, id))
     .limit(1);
 }
 
-async function loadRunDetail(db: PgDb, id: string) {
+/**
+ * Load one run with its trace and what it produced.
+ *
+ * Exported so `scripts/verify-run-detail-sql.mjs` runs the exact detail query
+ * against real PostgreSQL.
+ *
+ * @param db - Drizzle client.
+ * @param id - Run id.
+ * @returns The run detail, or null when no run has that id.
+ */
+export async function loadRunDetail(db: PgDb, id: string) {
   const [row] = await runDetailQuery(db, id);
   if (!row) return null;
 
@@ -279,6 +317,9 @@ async function loadRunDetail(db: PgDb, id: string) {
     ),
     sighting_ids: aggregateGoalIds(row.sighting_ids),
     proposal_ids: aggregateGoalIds(row.proposal_ids),
+    goals: row.goals,
+    sightings: row.sightings.map((s) => ({ ...s, seen_at: iso(s.seen_at as Date | string) })),
+    proposals: row.proposals.map((p) => ({ ...p, created_at: iso(p.created_at as Date | string) })),
   });
 }
 

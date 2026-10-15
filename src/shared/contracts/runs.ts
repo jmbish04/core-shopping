@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { Id, IsoDateTime, type ListFields } from "./common";
 import { AGENT_CLIENTS, AgentClientSchema } from "./goals";
+import { ProposalKindSchema, ProposalStatusSchema } from "./proposals";
 
 export const RUN_STATUSES = ["running", "succeeded", "failed", "abandoned"] as const;
 export const RUN_EVENT_LEVELS = ["debug", "info", "warn", "error"] as const;
@@ -66,12 +67,45 @@ export const McpToolCallSchema = z
   .meta({ id: "McpToolCall" });
 export type McpToolCall = z.infer<typeof McpToolCallSchema>;
 
+/** A sighting a run recorded, with enough to read it without a second request. */
+export const RunSightingSchema = z
+  .object({
+    id: Id,
+    entity_id: Id,
+    title: z.string(),
+    url: z.string().nullable(),
+    price_cents: z.number().int().nullable(),
+    currency: z.string().nullable(),
+    agent_score: z.number().min(0).max(1).nullable(),
+    is_resighting: z.boolean(),
+    seen_at: IsoDateTime,
+  })
+  .meta({ id: "RunSighting" });
+export type RunSighting = z.infer<typeof RunSightingSchema>;
+
+/** A proposal a run produced. */
+export const RunProposalSchema = z
+  .object({
+    id: Id,
+    kind: ProposalKindSchema,
+    status: ProposalStatusSchema,
+    title: z.string(),
+    match_score: z.number().nullable(),
+    created_at: IsoDateTime,
+  })
+  .meta({ id: "RunProposal" });
+export type RunProposal = z.infer<typeof RunProposalSchema>;
+
 /** GET /api/runs/{id}: the run plus everything it produced. */
 export const RunDetailSchema = RunSchema.extend({
   events: z.array(RunEventSchema),
   tool_calls: z.array(McpToolCallSchema),
   sighting_ids: z.array(Id),
   proposal_ids: z.array(Id),
+  /** The run's goals with their titles, in goal_ids order. */
+  goals: z.array(z.object({ id: Id, title: z.string() })),
+  sightings: z.array(RunSightingSchema),
+  proposals: z.array(RunProposalSchema),
 }).meta({ id: "RunDetail" });
 export type RunDetail = z.infer<typeof RunDetailSchema>;
 

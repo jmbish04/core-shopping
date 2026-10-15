@@ -110,7 +110,7 @@ assert.equal(backlog.delta, 7);
 
 // --- the day series is dense ------------------------------------------------
 const days = denseDays("2026-10-08", 3, {
-  "2026-10-09": { succeeded: 2, failed: 1 },
+  "2026-10-09": { succeeded: 2, failed: 1, browser: 2 },
 });
 assert.deepEqual(
   days.map((d) => d.date),
@@ -124,8 +124,10 @@ assert.deepEqual(days[0], {
   abandoned: 0,
   running: 0,
   total: 0,
+  browser: 0,
 });
 assert.equal(days[1].total, 3, "total is the sum of the outcomes, not a separate count");
+assert.equal(days[1].browser, 2, "browser is a subset of total, never added to it");
 assert.equal(days[2].total, 0, "a quiet day is a zero, never a missing point");
 assert.equal(
   denseDays("2026-10-08", 1, {}).length,
@@ -238,6 +240,7 @@ const empty = DashboardOverviewSchema.parse({
     silent_updates: 0,
   },
   recent_proposals: [],
+  recent_runs: [],
 });
 assert.equal(empty.goal_strips[0].runs.length, 0, "a goal that has never run keeps an empty strip");
 assert.equal(

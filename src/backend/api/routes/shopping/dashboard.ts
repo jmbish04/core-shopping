@@ -22,6 +22,7 @@ import { sql } from "drizzle-orm";
 
 import { withPg } from "@/backend/pg/client";
 import {
+  DASHBOARD_RECENT_RUNS,
   DashboardOverviewQuerySchema,
   DashboardOverviewSchema,
   ErrorEnvelopeSchema,
@@ -35,6 +36,7 @@ import {
   activeGoals,
   goalStrips,
   recentProposals,
+  recentRuns,
   reviewBacklog,
   runOutcomes,
   runsPerDay,
@@ -72,7 +74,7 @@ shoppingDashboardRouter.openapi(
     const { windowStart, windowEnd, previousStart } = dashboardWindow(new Date(), windowDays);
 
     const payload = await withPg(c.env, async (db) => {
-      const [runs, outcomes, findings, lessons, accepted, backlog, goals, perDay, strips, proposals] =
+      const [runs, outcomes, findings, lessons, accepted, backlog, goals, perDay, strips, proposals, latestRuns] =
         await Promise.all([
           windowedCount(db, "agent_runs", "started_at", windowStart, windowEnd, previousStart),
           runOutcomes(db, windowStart, windowEnd, previousStart),
@@ -92,6 +94,7 @@ shoppingDashboardRouter.openapi(
           runsPerDay(db, windowStart, windowEnd, windowDays),
           goalStrips(db, strip_goals),
           recentProposals(db, recent_proposals),
+          recentRuns(db, DASHBOARD_RECENT_RUNS),
         ]);
 
       return {
@@ -158,6 +161,7 @@ shoppingDashboardRouter.openapi(
         goal_strips: strips,
         review_backlog: backlog.backlog,
         recent_proposals: proposals,
+        recent_runs: latestRuns,
       };
     });
 
