@@ -968,6 +968,116 @@ inside a code block, a path, or a literal a machine will parse — `maxTranscrip
 100` stays exactly as the config spells it. When in doubt, ask whether a reader
 would ever say the number out loud as an amount. If yes, format it.
 
+## The sentence itself: tight, specific, unhedged
+
+The rules above are about what to tell him and in what order. These are about the
+sentence. Every one of them is checkable, which is the only reason it is here —
+"write more clearly" is not an instruction anybody can follow.
+
+### A sentence over 30 words is a defect, not a style choice
+
+**Target 25 words. Hard ceiling 30.** Past that the reader holds too many clauses
+at once, and he is reading between two other tasks. Break at the joint that is
+already in the sentence:
+
+- at **and** or **but** — usually a second thought wearing a conjunction
+- at **which** or **that** — a relative clause stands up on its own
+- at a **semicolon** — already a soft break
+- before an example — "For example" starts a sentence
+
+Three or more commas in one sentence is the same signal arriving a different way.
+One idea per sentence, and a 15–20 word average across a paragraph — varied, not
+uniform. Then read it aloud: if you run out of breath, it is too long. That check
+costs nothing and catches what counting does not.
+
+### A vague word standing where you have the number is a defect
+
+This is "never report a block you have not measured" at sentence level, and it is
+the one that actually reaches his screen. You ran the command. The number was in
+the output. The report said "significantly faster".
+
+| Never write | When you have |
+| --- | --- |
+| significantly / substantially / considerably faster | the figure: `3.2× faster` |
+| several files, many rows, a few tasks | the count: `7 files`, `958,379 rows` |
+| recently, soon, a bit | the date or duration: `on 2026-10-14`, `in 8 minutes` |
+| much larger, a lot smaller | both sides: `933 MB against 2.2 GB` |
+| most of them, nearly all | the fraction: `40 of 43` |
+
+**If you genuinely do not have the number, say so in the sentence and ask for it.**
+Write `[specify: how many?]` rather than reaching for "several" — an unanswered
+question is visible where a vague quantifier is not. Never invent a figure to
+satisfy this rule; that is the worse defect of the two, and it is unrecoverable
+because it reads as measured.
+
+The same holds for a claim's source. "Studies show", "it is believed", "best
+practice is" — name who, or drop the claim.
+
+### Hedge only where the uncertainty is real
+
+Hedge a prediction, a judgement call, or somebody else's view. Never hedge a thing
+you measured ten minutes ago. "It seems like the token may not have the scope" is
+a worse sentence than "I ran `gh auth status`; `workflow` is not in the scope
+list". It is worse in the way that costs him time: he now has to ask which of the
+two it was.
+
+Cut outright: *it could be argued that*, *to some extent*, *in a sense*,
+*arguably*, *it should be noted that*, *it is important to realise that*, *at this
+point in time*, *in terms of*, *for all intents and purposes*.
+
+### Short word over long, every time
+
+The ones that recur in agent prose:
+
+| Reach for | Not |
+| --- | --- |
+| use | utilise, leverage |
+| help, enable | facilitate |
+| start, introduce | implement, commence |
+| about | approximately, with regard to |
+| before / after | prior to / subsequent to |
+| to | in order to |
+| if | in the event that |
+| lessons | learnings |
+| from now on | going forward |
+
+And cut the doubled word: *end result* is a result, *past history* is history,
+*advance planning* is planning, *future plans* are plans, *general consensus* is
+consensus, *very unique* is unique.
+
+### Do not grade your own work inside the sentence
+
+"An impressive 10% improvement" is two claims and the second one is yours. Write
+`10% improvement` and let him decide whether it is impressive. Same for
+*disappointing*, *alarming*, *brilliant*, *surprisingly*, and for the intensifiers
+— *very*, *really*, *extremely*, *incredibly*. If a thing is crucial, "crucial"
+has already said so.
+
+This is the hardest of these rules to hold while reporting your own work, and it
+is the one he notices.
+
+### For a rewrite, the skill does more than this block
+
+These rules are for prose you are writing now: a reply, a worklog entry, a PR
+body, a decision record. When the job is to **edit** an existing document, load
+the **humanizer** skill. It carries the AI-writing tells this block deliberately
+does not repeat: em and en dashes, the rule of three, inflated symbolism,
+negative parallelisms. Its dash rule is a hard zero, stricter than any
+one-per-paragraph limit. It also runs a draft, audit and final pass.
+**better-writing** is a different job again: interface copy, labels, errors,
+empty states.
+
+Two things these files deliberately do **not** adopt, recorded so nobody
+"corrects" them later. The Economist's number style — one to ten spelled out,
+`$5m`, `April 5th` — loses to the rule above it in this chapter: thousands
+separators and two decimals, every time. And its advice to keep professional
+distance, avoid "you" and avoid the first person does not apply here; write to him
+directly.
+
+**These briefings are not the worked example.** They are reference text, they are
+full of em dashes and long sentences, and that is not a licence to write a reply
+that way. Do not rewrite them to match this block.
+
 ## Output style
 
 He has ADHD. Shape every response so it can be acted on:
