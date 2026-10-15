@@ -83,7 +83,7 @@ const db = drizzle(client);
 
 /** Take every measure at once, so a baseline and a result are comparable. */
 async function measure() {
-  const [runs, outcomes, findings, lessons, accepted, backlog, goals, perDay, strips, proposals] =
+  const [runs, outcomes, findings, lessons, accepted, backlog, goals, perDay, strips, proposals, recent] =
     await Promise.all([
       Q.windowedCount(db, "agent_runs", "started_at", windowStart, windowEnd, previousStart),
       Q.runOutcomes(db, windowStart, windowEnd, previousStart),
@@ -103,8 +103,9 @@ async function measure() {
       Q.runsPerDay(db, windowStart, windowEnd, WINDOW_DAYS),
       Q.goalStrips(db, 50),
       Q.recentProposals(db, 50),
+      Q.recentRuns(db, 50),
     ]);
-  return { runs, outcomes, findings, lessons, accepted, backlog, goals, perDay, strips, proposals };
+  return { runs, outcomes, findings, lessons, accepted, backlog, goals, perDay, strips, proposals, recent };
 }
 
 const fails = [];
@@ -160,10 +161,19 @@ try {
     [R(5), "succeeded", d(7, 1), plus(d(7, 1), 1000), G2],
     [R(6), "failed", d(8, 1), plus(d(8, 1), 1000), G2],
   ];
+  // R1 is a browser run that recorded 2 sightings; R2 failed with a reason.
+  // Every other run is a plain claude run with no summary.
   for (const [id, status, started, finished, goal] of runs) {
     await client.query(
-      `insert into agent_runs (id, client, model, status, started_at, finished_at) values ($1,'claude','m',$2,$3,$4)`,
-      [id, status, started, finished],
+      `insert into agent_runs (id, client, model, status, started_at, finished_at, summary, sightings_count, error)
+       values ($1,$5,'m',$2,$3,$4,$6,$7,$8)`,
+      [
+        id, status, started, finished,
+        id === R(1) ? "browser" : "claude",
+        id === R(1) ? "VDS browser run" : "",
+        id === R(1) ? 2 : 0,
+        id === R(2) ? "VDS boom" : null,
+      ],
     );
     await client.query(`insert into run_goals (run_id, goal_id) values ($1,$2)`, [id, goal]);
   }
@@ -263,6 +273,12 @@ try {
   );
   check("today's bucket is the LAST one, so nothing falls off the chart",
     after.perDay.at(-1).date, dayOf(0));
+  check("the browser run counts as browser on its day, and only there", {
+    today: delta(dayOf(0), "browser"),
+    yesterday: delta(dayOf(1), "browser"),
+  }, { today: 1, yesterday: 0 });
+  check("browser is a subset: today's total still grew by exactly 2",
+    delta(dayOf(0), "total"), 2);
 
   console.log("\nfindings and lessons:");
   check("2 sightings in the window, 1 before", {
@@ -317,7 +333,21 @@ try {
   check("runs_total matches", strip1?.runs_total, 5);
   check("durations are milliseconds, and a running run has none",
     strip1?.runs.map((r) => r.duration_ms), [3000, 7_200_000, 2000, 1500, null]);
+  check("a strip run carries its summary and findings count",
+    strip1?.runs.filter((r) => r.id === R(1)).map((r) => [r.summary, r.sightings_count]),
+    [["VDS browser run", 2]]);
+  check("a run with no summary reads as an empty string, not null",
+    strip1?.runs.find((r) => r.id === R(3))?.summary, "");
   check("a goal whose next run is overdue reads stale", strip2?.stale, true);
+
+  console.log("\nrecent runs:");
+  const seeded = new Set(runs.map(([id]) => id));
+  const mine = after.recent.filter((r) => seeded.has(r.id));
+  check("newest first, across goals", mine.map((r) => r.id), [R(4), R(1), R(2), R(7), R(3), R(5), R(6)]);
+  check("client, error and goal title come through",
+    [mine.find((r) => r.id === R(1))?.client, mine.find((r) => r.id === R(2))?.error, mine[0]?.goal_title],
+    ["browser", "VDS boom", "VDS goal one"]);
+  check("a running run has no finish", mine[0]?.finished_at, null);
   check("a goal inside its cadence does not", strip1?.stale, false);
 
   console.log("\nrecent proposals:");

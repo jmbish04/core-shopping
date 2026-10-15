@@ -191,7 +191,8 @@ export async function runsPerDay(
       count(*) filter (where status = 'succeeded')::int as succeeded,
       count(*) filter (where status = 'failed')::int as failed,
       count(*) filter (where status = 'abandoned')::int as abandoned,
-      count(*) filter (where status = 'running')::int as running
+      count(*) filter (where status = 'running')::int as running,
+      count(*) filter (where client = 'browser')::int as browser
     from agent_runs
     where started_at >= ${windowStart} and started_at < ${windowEnd}
     group by 1
@@ -204,6 +205,7 @@ export async function runsPerDay(
       failed: num(row.failed),
       abandoned: num(row.abandoned),
       running: num(row.running),
+      browser: num(row.browser),
     };
   }
   return denseDays(windowStart.toISOString().slice(0, 10), windowDays, byDate);
@@ -221,7 +223,7 @@ export async function goalStrips(db: PgDb, limit: number) {
     with ranked as (
       select
         rg.goal_id,
-        r.id, r.status, r.started_at, r.finished_at, r.quality_score,
+        r.id, r.status, r.started_at, r.finished_at, r.quality_score, r.summary, r.sightings_count,
         row_number() over (partition by rg.goal_id order by r.started_at desc, r.id desc) as rn,
         count(*) over (partition by rg.goal_id) as runs_total
       from run_goals rg
@@ -240,7 +242,8 @@ export async function goalStrips(db: PgDb, limit: number) {
         jsonb_agg(
           jsonb_build_object(
             'id', ranked.id, 'status', ranked.status, 'started_at', ranked.started_at,
-            'finished_at', ranked.finished_at, 'quality_score', ranked.quality_score
+            'finished_at', ranked.finished_at, 'quality_score', ranked.quality_score,
+            'summary', ranked.summary, 'sightings_count', ranked.sightings_count
           ) order by ranked.started_at
         ) filter (where ranked.id is not null),
         '[]'::jsonb
@@ -282,8 +285,38 @@ export async function goalStrips(db: PgDb, limit: number) {
             ? null
             : Math.max(0, new Date(finishedAt).getTime() - new Date(startedAt).getTime()),
         quality_score: maybeNum(run.quality_score),
+        summary: (run.summary as string | null) ?? "",
+        sightings_count: num(run.sightings_count),
       };
     }),
+  }));
+}
+
+/**
+ * The newest runs across every goal, newest first.
+ *
+ * A run with several goals is one row, named by its first goal title; a run
+ * with no goal has a null title rather than being dropped.
+ */
+export async function recentRuns(db: PgDb, limit: number) {
+  const rows = (await db.execute(sql`
+    select r.id, r.client, r.status, r.summary, r.error, r.started_at, r.finished_at, r.sightings_count,
+           (select g.title from run_goals rg join goals g on g.id = rg.goal_id
+             where rg.run_id = r.id order by g.title limit 1) as goal_title
+    from agent_runs r
+    order by r.started_at desc, r.id desc
+    limit ${limit}
+  `)) as unknown as { rows: Array<Record<string, unknown>> };
+  return rows.rows.map((row) => ({
+    id: row.id as string,
+    client: row.client as string,
+    status: row.status as string,
+    summary: (row.summary as string | null) ?? "",
+    error: (row.error as string | null) ?? null,
+    started_at: iso(row.started_at as string),
+    finished_at: row.finished_at == null ? null : iso(row.finished_at as string),
+    sightings_count: num(row.sightings_count),
+    goal_title: (row.goal_title as string | null) ?? null,
   }));
 }
 
