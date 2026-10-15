@@ -87,7 +87,7 @@ export function buildBrowsePrompt(goal: BrowseGoal, criteria: BrowseCriterion[])
   if (goal.instructions.trim()) lines.push(`Instructions: ${goal.instructions.trim()}`);
   if (goal.systemPrompt.trim()) lines.push(`Context: ${goal.systemPrompt.trim()}`);
   lines.push(
-    "Finish with one JSON object on the last line: {\"findings\":[{\"title\",\"url\",\"price\",\"currency\",\"seller\",\"dates\",\"notes\"}]}. Use null for a field you did not see.",
+    "Finish with one JSON object on the last line: {\"findings\":[{\"kind\",\"title\",\"url\",\"price\",\"currency\",\"seller\",\"venue\",\"city\",\"dates\",\"notes\"}]}. kind is one of event, product, flight, hotel, experience. dates is YYYY-MM-DD or an ISO datetime. Use null for a field you did not see.",
   );
   const prompt = lines.join("\n");
   if (prompt.length <= BROWSE_PROMPT_MAX_CHARS) return prompt;

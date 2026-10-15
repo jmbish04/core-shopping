@@ -35,7 +35,8 @@
     "guardian:project": "node scripts/set-guardian-project.mjs",
     "guardian:project:check": "node scripts/set-guardian-project.mjs --check",
     "verify:dashboard": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-dashboard-sql.mjs",
-    "verify:runs": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-runs-queue-sql.mjs"
+    "verify:runs": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-runs-queue-sql.mjs",
+    "verify:sightings": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-record-sighting.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.3",

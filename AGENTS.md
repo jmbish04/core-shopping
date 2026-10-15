@@ -200,6 +200,18 @@ decoration has no real backing, remove the decoration — do not fake it.
   `BROWSER_DAILY_RUN_CAP` var, and a tripped cost guard. Most findings in this
   app come from a real browser; new scraping work builds on these two routes
   rather than calling `browserSubmit` directly.
+- **Sightings = `recordSighting`, nothing else** (cs-be-3-4, cs-be-4-1). Import
+  from `src/backend/catalog/`. One function stores a sighting and returns the
+  dedupe answer (new or re-sighting, `sighting_count`, `price_delta`, prior
+  proposals with their latest verdict that was not undone). `POST /api/sightings`,
+  the browser sync and the MCP server (cs-be-3-1) all call it; never insert into
+  `sightings` or `entities` directly. Identity: the per-kind fingerprint in
+  `canonical.ts` (an event is performer + venue + local date, so two sellers
+  share one entity), then an earlier sighting of the same canonical URL. A
+  succeeded browser run's final `{"findings":[...]}` is read from the FULL job
+  events (run_events messages are cut at 2,000 chars) by the one sync that
+  finishes the run. `pnpm run verify:sightings` runs it against the real
+  database in a rolled-back transaction.
 - **Chat is one backend behind twelve faces.** `POST /api/chat/stream` is the
   endpoint; `src/frontend/lib/chat.ts` (`useChatThread`) is the only client.
   SSE events, all measured against the live router: `meta`, `routed`

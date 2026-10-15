@@ -4,7 +4,9 @@
  * - `POST /api/goals/{id}/browse` starts one core-browser job for a goal and
  *   records it as an `agent_runs` row with `client = browser`.
  * - `POST /api/runs/{id}/sync` reads the job back, copies its new events into
- *   `run_events`, and finishes the run when the job is terminal.
+ *   `run_events`, and finishes the run when the job is terminal. When the job
+ *   succeeded, the findings in its final answer go through `recordSighting`
+ *   (cs-be-3-4), so browser and MCP sightings get the same dedupe answer.
  *
  * Every submit spends core-browser budget, so a browse request is refused when
  * the goal is not active, a browser run for it is still running, today's
@@ -30,7 +32,8 @@ import {
   runStatusForJob,
   type BrowserHealth,
 } from "@/backend/browser";
-import { withPg } from "@/backend/pg/client";
+import { findingToSighting, parseBrowserFindings, recordSighting } from "@/backend/catalog";
+import { withPg, type PgDb } from "@/backend/pg/client";
 import { goalCriteria } from "@/backend/pg/schemas/goals/goal-criteria";
 import { goals } from "@/backend/pg/schemas/goals/goals";
 import { agentRuns, runEvents, runGoals } from "@/backend/pg/schemas/runs/runs";
@@ -53,8 +56,79 @@ const BrowseSyncSchema = z
     run_status: z.enum(["running", "succeeded", "failed", "abandoned"]),
     job_status: z.string(),
     events_added: z.number().int().nonnegative(),
+    /** Set only by the sync that finished a succeeded run; null otherwise. */
+    sightings: z
+      .object({
+        recorded: z.number().int().nonnegative(),
+        new: z.number().int().nonnegative(),
+        resighting: z.number().int().nonnegative(),
+        failed: z.number().int().nonnegative(),
+        /** Why no findings could be read from the final answer, when none could. */
+        error: z.string().nullable(),
+      })
+      .nullable(),
   })
   .meta({ id: "BrowseSync" });
+
+/** What recording a succeeded job's findings did. */
+type SightingTally = { recorded: number; new: number; resighting: number; failed: number; error: string | null };
+
+/**
+ * Record the findings in a succeeded job's final answer as sightings, and log
+ * the outcome as one `browser.findings` run event.
+ *
+ * @param db - A Drizzle client.
+ * @param runId - The run.
+ * @param events - The job's full events (messages are not truncated here).
+ * @returns The tally.
+ */
+async function recordJobFindings(
+  db: PgDb,
+  runId: string,
+  events: { seq: number; kind: string; message: string | null }[],
+): Promise<SightingTally> {
+  const tally: SightingTally = { recorded: 0, new: 0, resighting: 0, failed: 0, error: null };
+  const [goal] = await db
+    .select({ id: goals.id, category: goals.category, currency: goals.currency })
+    .from(runGoals)
+    .innerJoin(goals, eq(goals.id, runGoals.goalId))
+    .where(eq(runGoals.runId, runId))
+    .limit(1);
+  const parsed = parseBrowserFindings(events);
+  const failures: string[] = [];
+  if (!goal) tally.error = "the run has no goal";
+  else if (!parsed.ok) tally.error = parsed.reason;
+  else {
+    for (const finding of parsed.findings) {
+      const input = findingToSighting(finding, { runId, goalId: goal.id, category: goal.category, currency: goal.currency });
+      if (!input) {
+        tally.failed++;
+        failures.push("a finding with no title and no url");
+        continue;
+      }
+      try {
+        const answer = await recordSighting(db, input);
+        tally.recorded++;
+        if (answer.status === "new") tally.new++;
+        else tally.resighting++;
+      } catch (error) {
+        tally.failed++;
+        failures.push(`${input.title}: ${errorText(error)}`);
+      }
+    }
+  }
+  const message = tally.error
+    ? `No sightings recorded: ${tally.error}`
+    : `${tally.recorded.toLocaleString("en-US")} sightings recorded (${tally.new.toLocaleString("en-US")} new, ${tally.resighting.toLocaleString("en-US")} re-sightings), ${tally.failed.toLocaleString("en-US")} failed`;
+  await db.insert(runEvents).values({
+    runId,
+    kind: "browser.findings",
+    level: tally.error || tally.failed ? "error" : "info",
+    message,
+    data: { ...tally, failures: failures.slice(0, 20) },
+  });
+  return tally;
+}
 
 function errorBody(code: string, message: string, details?: unknown) {
   return ErrorEnvelopeSchema.parse({ error: { code, message, ...(details === undefined ? {} : { details }) } });
@@ -186,7 +260,7 @@ browseRunsRouter.openapi(
     tags: ["Runs"],
     summary: "Sync a browser run from its core-browser job",
     description:
-      "Reads the run's core-browser job, copies new job events into run_events, and finishes the run when the job is terminal. No spend.",
+      "Reads the run's core-browser job, copies new job events into run_events, and finishes the run when the job is terminal. When the job succeeded, records the findings in its final answer as sightings. No spend.",
     operationId: "runsSync",
     request: { params: z.object({ id: z.uuid() }) },
     responses: {
@@ -228,19 +302,23 @@ browseRunsRouter.openapi(
 
     const inserts = outcome ? eventsToCopy(outcome.events, found.lastSeq) : [];
     const runStatus = outcome ? runStatusForJob(outcome.job.status) : "failed";
-    await withPg(env, async (db) => {
+    const sightingTally = await withPg(env, async (db) => {
       if (inserts.length) await db.insert(runEvents).values(inserts.map((e) => ({ ...e, runId })));
-      if (found.run.status === "running" && runStatus !== "running") {
-        await db
-          .update(agentRuns)
-          .set({
-            status: runStatus,
-            finishedAt: new Date(),
-            summary: outcome ? jobSummary(outcome.job) : "core-browser has no such job",
-            error: outcome ? outcome.job.error : `core-browser has no job ${jobId}`,
-          })
-          .where(eq(agentRuns.id, runId));
-      }
+      if (found.run.status !== "running" || runStatus === "running") return null;
+      // Conditional on status = running, so of two concurrent syncs only one
+      // finishes the run, and only that one records the findings.
+      const finished = await db
+        .update(agentRuns)
+        .set({
+          status: runStatus,
+          finishedAt: new Date(),
+          summary: outcome ? jobSummary(outcome.job) : "core-browser has no such job",
+          error: outcome ? outcome.job.error : `core-browser has no job ${jobId}`,
+        })
+        .where(and(eq(agentRuns.id, runId), eq(agentRuns.status, "running")))
+        .returning({ id: agentRuns.id });
+      if (!finished.length || runStatus !== "succeeded" || !outcome) return null;
+      return recordJobFindings(db, runId, outcome.events);
     });
 
     return c.json(
@@ -250,6 +328,7 @@ browseRunsRouter.openapi(
         run_status: found.run.status === "running" ? runStatus : found.run.status,
         job_status: outcome?.job.status ?? "missing",
         events_added: inserts.length,
+        sightings: sightingTally,
       }),
       200,
     );
