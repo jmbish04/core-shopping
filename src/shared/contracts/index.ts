@@ -9,6 +9,7 @@ export * from "./goals";
 export * from "./runs";
 export * from "./catalog";
 export * from "./proposals";
+export * from "./sightings";
 export * from "./hitl";
 export * from "./alerts";
 export * from "./dashboard";
