@@ -95,9 +95,13 @@ function TitleCell({
         <Icon className={cn(run.status === "running" && "animate-spin")} />
       </IconTile>
       <div className="flex min-w-0 flex-col">
-        <span className="text-foreground truncate text-sm font-medium" title={run.summary || undefined}>
+        <a
+          href={`/runs/${encodeURIComponent(run.id)}`}
+          className="text-foreground hover:text-primary truncate text-sm font-medium transition-colors"
+          title={run.summary || undefined}
+        >
           {run.summary || <span className="text-muted-foreground">No summary recorded</span>}
-        </span>
+        </a>
         {context ? (
           <span
             className={cn(

@@ -15,11 +15,12 @@ const {
   type = "website",
 } = Astro.props as Props;
 
-const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
-const ogImageURL = ogImage
-  ? new URL(ogImage, Astro.site).toString()
-  : new URL("og-image.png", canonicalURL).toString();
-const faviconURL = new URL("favicon.svg", canonicalURL).toString();
+// Pages render on request (output: "server"), so the request's own origin is
+// the deployed one. `Astro.site` is a build-time SITE env var that Workers
+// Builds never sets; it fell back to http://localhost:4321 in production.
+const origin = Astro.url.origin;
+const canonicalURL = new URL(Astro.url.pathname, origin).toString();
+const ogImageURL = new URL(ogImage ?? "/og.png", origin).toString();
 ---
 
 <!-- Basic -->
@@ -30,7 +31,7 @@ const faviconURL = new URL("favicon.svg", canonicalURL).toString();
 
 <!-- Canonical -->
 <link rel="canonical" href={canonicalURL} />
-<link rel="icon" href={faviconURL} type="image/svg+xml" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="icon" href="/favicon.ico" sizes="32x32" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 

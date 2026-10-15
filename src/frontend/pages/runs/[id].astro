@@ -1,0 +1,19 @@
+---
+/**
+ * `/runs/{id}` — Run detail (maestro cs-fe-10-2).
+ *
+ * `client:only="react"`: the island loads the run on mount, so a server render
+ * would only emit a skeleton.
+ */
+import { PageBody } from "@/components/blocks/app-shell-2/components/page-shell";
+import { RunDetailPage } from "@/components/runs/run-detail";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const runId = Astro.params.id ?? "";
+---
+
+<BaseLayout title="Run" description="One agent run: its steps, tool calls and what it found.">
+  <PageBody>
+    <RunDetailPage client:only="react" runId={runId} />
+  </PageBody>
+</BaseLayout>
