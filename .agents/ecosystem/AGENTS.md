@@ -1248,6 +1248,56 @@ Claude Code, cloud sessions, and Claude on iOS. The bearer token is the standard
 `WORKER_API_KEY` — the same credential every Worker in the ecosystem accepts (see
 "Secrets & credentials"); never mint a maestro-specific one.
 
+### Every door now reaches the Worker. Stop hunting for the "right" one.
+
+**Measured 2026-10-14, on this Mac.** All three of these write to the Worker, and
+there is no longer a local SQLite lane for an agent to fall into:
+
+| Door | Where it actually goes | Proof |
+|---|---|---|
+| `mcp__colby-maestro__*` (`search` / `execute`) | the Worker's `/mcp` | `~/.config/colby-mcp/servers.json` maps `colby-maestro` to `https://colby-maestro.hacolby.workers.dev/mcp` through `mcp-remote`; `codemode.spec().info.title` answers `Colby Maestro API` with **214 paths**, the same count as the Worker's own `/openapi.json` |
+| `colby-maestro` CLI (`~/.local/bin/colby-maestro`) | the Worker's REST API | `local_ai_orchestrator/shared/worker_api.py` sets `DEFAULT_WORKER_BASE_URL = https://colby-maestro.hacolby.workers.dev`; `colby-maestro tasks list --project-key colby-ecosystem --json` and `GET /api/tasks?project_key=colby-ecosystem` returned the same first task, field for field |
+| `maestro-task` (the plugin's CLI) | the Worker's REST API | `plugins/colby-maestro/lib/colby_maestro/http.py`, against `base_url()` |
+
+**This paragraph used to say the opposite, and that was the bug.** Until
+2026-10-14 this file told agents that `mcp__colby-maestro__*` and the
+`colby-maestro` CLI were "legacy" tools writing to a local SQLite mirror, and
+that the obvious-looking tool was "the wrong one". It had been true; Justin
+rewired both to the Worker and the warning stayed. The result was agents
+distrusting the correct tool, going looking for a client that was not installed,
+and reporting themselves blocked on a job the tool in their hand would have
+done. **A stale warning does more damage than no warning** — it does not merely
+fail to help, it actively sends work to the wrong place, or to nowhere.
+
+So: **measure against the machine, not against this file.** The probe is one
+call and it costs nothing:
+
+```js
+// as the `code` argument to any code-mode server's `search`
+async () => { const s = await codemode.spec(); return s.info.title; }
+```
+
+If what you measure disagrees with what you read here, the measurement wins —
+and fixing this file is part of the job (see "End of session").
+
+### `maestro-task` is the plugin's CLI, and it is not always there
+
+`maestro-task` is on PATH **only while the `colby-maestro` plugin is enabled in
+that session**. It is not installed in `~/bin`, so a session without the plugin
+genuinely has no `maestro-task`, and that is not a broken machine.
+
+What it does NOT mean is that the session cannot be linked to a task. `bind` is
+not a Worker route — there is no `/bind` among the 214 paths, because binding is
+per-session state the plugin keeps plus a heartbeat. Without the plugin:
+
+- **to link a session to a task:** `POST /api/agents/heartbeat` with
+  `session_key` and `task_id`;
+- **to move a status or add a worklog note:** the ordinary task routes, through
+  the MCP's `execute` or over HTTP.
+
+Neither needs `maestro-task`. "I could not find the client, so the work could
+not be recorded" is never the answer.
+
 ### Tracking work is colby-maestro's job, and only colby-maestro's
 
 The two systems share a prefix and get mistaken for each other constantly. They do
@@ -1262,30 +1312,19 @@ Filing a PROPOSAL (see "End of session") does not break that rule: it creates a
 **maestro task whose `project_key` happens to be `colby-ecosystem`**. The tracking
 lives in maestro; only the file the proposal wants changed lives in the repo.
 
-**Legacy — never write tracking state through these:**
-
-- **The local Python MCP** — `mcp__colby-maestro__*`, launched as
-  `colby-maestro mcp-serve`, FastMCP on `127.0.0.1:4318`. Its task tools write to
-  a local SQLite mirror, not to the Worker. That is how stale tasks piled up: 12
-  written on 2026-09-18 never reached the Worker, because the Worker now refuses
-  any new task without a plan heading and the local tools cannot send one.
-- **The `colby-maestro` CLI.** Same store, same problem.
-
-If your session has both, the `mcp__colby-maestro__*` name looks like the obvious
-one. It is the wrong one.
+**One thing is still genuinely local.** `colby-maestro mcp-serve` can still run a
+FastMCP server on `127.0.0.1:4318`, and it is wired into no client on this
+machine — nothing in `~/.config/colby-mcp/servers.json` points at it. Start it
+only for the host-local operations the Worker's catalog does not carry
+(`orchestrator_*`, `cfg_*`, local model inventory). Never for a task, a status, a
+claim or a worklog.
 
 **Finding the connector — its name does not say "maestro".** In the desktop app
 it arrives as `mcp__<uuid>__search` and `mcp__<uuid>__execute`, whose
 descriptions are a generic code-mode OpenAPI blurb. **A keyword search cannot find
 it** — measured 2026-09-19, `ToolSearch` for `maestro task worklog room briefing`
 returned eight tools and none of them was Maestro, with the connector live. Ask
-each code-mode server who it is:
-
-```js
-// as the `code` argument to mcp__<uuid>__search
-async () => { const s = await codemode.spec(); return s.info.title; }
-```
-
+each code-mode server who it is with the `codemode.spec()` probe above;
 `"Colby Maestro API"` is the hit. Then drive it with
 `codemode.request({ method, path, body })` through that server's `execute`.
 
@@ -1310,12 +1349,33 @@ against `https://colby-maestro.hacolby.workers.dev`.
 "No maestro MCP in this session" is never a reason to leave work unrecorded — and
 it is a claim you must measure with the `codemode.spec()` probe before you make it.
 
+### Token spend is reported by a hook, not by you
+
+Every coding session reports what it spent to
+`https://agents.hacolby.app/api/submit/token-usage`, and the `colby-maestro`
+plugin's `TokenUsage` hook does it on Stop and SessionEnd without being asked.
+You do not call it, and you do not need to total anything up yourself.
+
+Two things to know rather than rediscover:
+
+- **A transcript line is not an API request.** Claude Code writes one line per
+  content block and every line repeats the full `usage` of its request. Measured
+  2026-10-14: 47 lines carrying usage held **18** distinct `requestId` values.
+  Anything that sums lines over-reports by about 2.6x. The grain is the request.
+- **It is charged to whatever tasks are bound to the session**, several at once
+  if that is the truth. So binding a task is what makes its actual cost
+  knowable — an unbound session's spend is recorded, but attributed to nothing.
+
+The raw rows land in `agent_token_usage` on the maestro Postgres; the budget
+ledger (`token_spend_entries`) is a separate, later layer. Design:
+`docs/superpowers/specs/2026-10-14-agent-token-telemetry-design.md` in the
+colby-maestro repo.
+
 **Full rules: `~/AGENTS-maestro.md`.**
 
 ---
 
 ---
-
 # End of session — propose improvements upstream
 
 **Before you finish, ask whether the work you just did should change the shared
