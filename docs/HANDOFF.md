@@ -1,10 +1,9 @@
 # core-shopping — session handoff
 
-Updated 2026-10-12 (third session, at hand-off). Everything below is merged to
-`main` (latest `0a55885`, PR #9), built by Workers Builds, and probed live.
-This session ran on the Linux farm box (`claude-farm`); the Mac tree is
-reachable from there with `ssh mac`, and `/Volumes/Projects` on the farm is a
-local link to `/home/colby/projects`, not the Mac.
+Updated 2026-10-15 (fourth session, at hand-off). Everything below is merged
+to `main` (PR #15, `a66e371`), built by Workers Builds, and probed live.
+PRs #11–#14 (core-browser binding, browser runs, sightings) landed between the
+third and fourth sessions; their record is in Maestro, not here.
 
 **Start by checking the newest build**, not by assuming it:
 `workers_builds_list` for `core-shopping`. A merge is not a deploy until the
@@ -13,7 +12,41 @@ build says so. The Builds REST API refuses every account token on this machine
 (`cloudflare-api-mcp.hacolby.workers.dev/mcp`, bearer `WORKER_API_KEY`) works,
 and so does reading the `Workers Builds` check run on the commit in GitHub.
 
-## This session (2026-10-12, third)
+## This session (2026-10-15, fourth)
+
+- **`cs-fe-10-2` Run detail — done.** `/runs/{id}`: step trace, MCP tool
+  calls, facts, goals, sightings, proposals; browser runs get **Refresh from
+  core-browser** (`POST /api/runs/{id}/sync`). Queue rows link to it.
+  `GET /api/runs/{id}` now returns `goals`, `sightings`, `proposals` as rows.
+  New `pnpm run verify:run-detail`.
+- **`cs-fe-1-2`, `1-3`, `1-4` Overview sections — done.** Throughput stacked by
+  outcome, incidents, goal run strips, recent activity with **Review N items**.
+  The payload gained `runs_per_day[].browser`, strip-run `summary` and
+  `sightings_count`, and `recent_runs`. `verify:dashboard` covers all three.
+- **`b0da7b27fea5` favicon — done.** Canonical and og tags use the request
+  origin; no more `localhost:4321` in production.
+- **Outcome colours are state tokens** (`--success`, `--destructive`,
+  `--info`), not `chart-1..5`: in order, those drew "failed" green.
+- **Local rendering:** run `wrangler dev` with `WORKER_API_KEY_DEV` set to a
+  throwaway passcode, never the production key, and log in with that. After a
+  rebuild, restart `wrangler dev`: it keeps the old asset list and serves pages
+  with no CSS.
+
+## Do these next
+
+1. **`cs-fe-3-1` Goal viewport.** `/goals/{slug}` does not exist, so the goals
+   console's open action and the Overview goal links have nowhere to go; the
+   Overview links to `/runs?goal=<id>` until it lands.
+2. **`4c72d164b9f5`** — `ApiError.message` is "[object Object]" for every
+   `{ error: { code, message } }` envelope. Fix `lib/api.ts`, then drop
+   `apiErrorMessage()` from `components/runs/run-detail-model.ts`.
+3. **`f6159691a5bf`** — KPI sparkline tooltip shows the previous day west of
+   UTC; use `utcDayLabel()` from `overview-sections.ts`.
+4. **`cs-be-6-6` is `blocked`** in Maestro although PRs #12–#14 shipped work for
+   it. 7 of the 8 live browser runs failed on model output ("content was not
+   JSON", empty replies). Read its worklog before touching it.
+
+## Earlier (2026-10-12, third)
 
 - **Build check.** The M2 merge (`0ea4e27`) deployed. The later briefing-sync
   build (`2347c34`) failed on a Cloudflare API `504` during `wrangler deploy`,
@@ -37,18 +70,6 @@ and so does reading the `Workers Builds` check run on the commit in GitHub.
   3 times while the old roundtrip check stayed green. Throwaway deleted.
 - **Filed `b0da7b27fea5`:** every page requests `http://localhost:4321/favicon.svg`
   because `astro.config.ts` falls back to localhost when `SITE` is unset.
-
-## Do these next
-
-1. **`cs-fe-1-2` Run throughput and incidents** — `runs_per_day` is already in
-   the Overview payload, dense by outcome. Bars over time are vertical here
-   (time x-axis), which the chart rule allows.
-2. **`cs-fe-1-3` Per-goal run health strips** — `goal_strips` is in the payload.
-3. **`cs-fe-1-4` Activity feed and needs-review call to action** —
-   `review_backlog` and `recent_proposals` are in the payload.
-4. **`cs-fe-10-2` Run detail** — `/api/runs/{id}` is live; the queue rows have
-   no link yet because the page does not exist. Add the link with the page.
-5. **`b0da7b27fea5`** favicon/canonical origin (small).
 
 The Overview island (`components/overview/overview-dashboard.tsx`) fetches the
 payload once; each FE-1 section should take its slice from there, not refetch.
