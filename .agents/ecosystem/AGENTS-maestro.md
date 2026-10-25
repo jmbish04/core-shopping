@@ -172,10 +172,9 @@ hardcode it, never read it from a `.env`.
   returned 112. Slice client-side, and never assume a list you asked to cap is capped.
 - **`POST /api/tasks` requires `task_type` *and* `priority` explicitly.** Omitting
   them is a 400 (`priority: Invalid input: expected string, received undefined;
-  task_type: …`), while `task_upsert_tool` over MCP defaults both. The same
-  logical write has two different required-field sets, so a body that works over
-  MCP 400s over REST. Send `"task_type": "task"` and a `priority` unless you mean
-  something else.
+  task_type: …`). The legacy local `task_upsert_tool` used to default both, but
+  the Worker connector REST API does not. Send `"task_type": "task"` and a
+  `priority` unless you mean something else.
 - *(Fixed 2026-09-13: the unscoped `GET /api/tasks` used to 500 and now returns
   200. Scoping with `project_key` is still cheaper, and `GET /api/briefing` is
   still the better call for "what am I supposed to be doing".)*
@@ -255,6 +254,34 @@ The `colby-maestro` plugin (published from colby-ecosystem, enabled in user sett
 - **Guards:** edits in a main checkout or a reused worktree are blocked; symlinking `node_modules` is blocked. A repo that is never worked in a worktree (`~/bin`, `~/system-configs`) opts out with an empty `.claude/worktree-optional` file.
 
 Use `maestro-task` for status and worklog (`maestro-task status <id> review`, `maestro-task log <id> note "..."`), and the `maestro-worklog` skill for which kind to write. The old `maestro-session-end.py` (local-mirror sync) is retired to `~/.claude/hooks/retired/`.
+
+## Playbooks: search before you execute, write one when you solve something
+
+**Colby Maestro holds a playbook library: proven procedures for jobs that recur.**
+A briefing is read once, before the task is known; a playbook is searched when
+the question arrives. Search it before a migration, a renumber, a merge of
+several PRs, a backup, a CI failure, or anything you suspect someone already
+solved.
+
+```js
+async () => (await codemode.request({ method: "GET", path: "/api/playbooks" }))
+  .playbooks.map((p) => [p.id, p.title, p.summary])
+```
+
+`GET /api/playbooks/{id}` returns the body (`revision.body_markdown`), and
+`GET /api/tasks/{taskId}/suggested-playbooks` matches one to a task.
+
+**Measured cost of skipping it, 2026-10-21:** an integrator renumbered four
+migrations with `pnpm run db:generate`, the exact move the playbook
+`renumber-an-applied-migration` forbids. It only got away with it because the
+regenerated files came out byte-identical. Nothing in these briefings mentioned
+playbooks, so it never looked.
+
+**When you solve something that will recur, write the playbook.** In a repo that
+has `docs/playbooks/` (colby-maestro does), draft it there as markdown with front
+matter and sync it with `node scripts/seed-playbooks.mjs --apply <file>`.
+Elsewhere, `POST /api/playbooks` with `title`, `summary` and `markdown`. Name the
+trap, the measurement and the fix, not "be careful with X".
 
 ## Before you finish
 

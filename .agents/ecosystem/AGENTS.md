@@ -168,11 +168,15 @@ runner, or another person's checkout cannot see them.** A repo that carries no
 copy is a repo where the rules silently do not apply — and "the agent did not
 have the briefing" reads identically to "the agent ignored the briefing".
 
-So every repo Justin works in gets a **sync Action**: on every merge to the
-default branch, on a weekly schedule, and on demand, it pulls the briefings this
-repo actually needs from `github.com/jmbish04/colby-ecosystem` into
-`.agents/ecosystem/` and commits them. Because they are committed, a plain
-`git clone` already has them.
+So every repo Justin works in gets a **sync Action**: on every pull request, and
+on demand, it pulls the briefings this repo actually needs from
+`github.com/jmbish04/colby-ecosystem` into `.agents/ecosystem/` and commits them
+**to the PR branch**. They reach the default branch inside a merge that was going
+to build anyway. Because they are committed, a plain `git clone` already has them.
+
+**Never add a `push` or `schedule` trigger back.** Those committed straight to
+`main` in every repo, so one change here became an Actions run and a Workers Build
+in every repo. Record: `decisions/2026-10-21-agents-sync-fanout.md`.
 
 **Right-sized is the point.** A Python repo gets `AGENTS.md` +
 `AGENTS-python.md`, not the 79KB Cloudflare chapter. The selection is derived from
@@ -521,6 +525,15 @@ machine-wide `AGENTS*.md` briefings, the agent skills and the templates; it is
 cloned at `/Volumes/Projects/colby-ecosystem` and synced with `sync-agents`.
 Neither of them tracks work — that is colby-maestro.
 
+**The versioned copy is [`jmbish04/core-reuse-library`](https://github.com/jmbish04/core-reuse-library)
+(private, since 2026-10-21).** `~/.colby-ecosystem/` is on one Mac, outside
+any git repo, so a cloud session, a CI runner or another clone cannot see it.
+Its `workers/` and `python/` code was copied there, alongside `standards/` (one
+page per stack: Workers backend and frontend, Python, GAS) and `references/`
+(pinned links to core-guardian, core-bridge, core-pve and the two templates).
+Colby Maestro indexes it for `GET /api/reuse/search`. Prefer it when the session
+may not be on this Mac, and change shared code there, by PR.
+
 - `workers/` — `wrangler.jsonc` (full observability, **no `ai` binding**, Secret
   Store bindings, `run_worker_first`), `utils/secrets.ts`, `utils/ai.ts`,
   `devOps/tokens.mjs`, `devOps/fix-d1-migrations.mjs`, `.vscode/settings.json`
@@ -559,6 +572,7 @@ query the control plane?". Just use them and report what you did.
 | **Cloudflare API MCP** (`mcp__cloudflare-api*`, the self-hosted proxy) | `search` / `execute` / `docs` and the Workers CI/CD tools — including **writes**: creating bindings, configuring builds, reading logs |
 | **Cloudflare docs search** | Read-only documentation lookup |
 | **Deploying a Cloudflare Worker** | See "Deploying" in `~/AGENTS-cloudflare-workers.md` — standing authorization, rollback is the safety net |
+| **Commenting on a pull request** | Any PR, yours or another session's, on any repo. Reversible, visible and attributable. Justin, 2026-10-17: "these agents NEVER need to ask permission to comment on PRs, ever". Merging, pushing, closing and reopening are NOT covered. |
 
 **If a permission prompt still appears for one of these, that is a configuration
 bug, not a signal to stop.** Two known causes, both worth reporting rather than
@@ -854,6 +868,22 @@ actually theirs to make. Even then, ask once, with everything else already done.
 
 # A background task that has produced nothing in 2 minutes has hung
 
+**This rule is now enforced, not advised.** The `colby-maestro` plugin tracks
+every backgrounded Bash command and, past the cutoff with no new output,
+reports it on your next Bash call and refuses to let the turn end. Each task
+blocks once; a task still producing output is never touched. The rest of this
+chapter is what to do when it fires. Details and the measured mechanism:
+`plugins/colby-maestro/README.md`.
+
+A second guard sits in front of the problem rather than behind it: a PreToolUse
+lint rejects the command shapes that make a first-run error invisible — a
+build piped into a filter whose status is then chained off, a credential
+captured with its error silenced, `curl -s` into a blind parser, `|| true` on a
+build, a backgrounded command piped into a buffering filter. It was calibrated
+against 91,009 real Bash calls from this machine and fires on 3.07% of them, so
+`2>/dev/null` on a probe is still fine. `ERRORS_EXPECTED` in a command stands
+it down; `COLBY_MAESTRO_SCRIPT_LINT=off` stands it down entirely.
+
 **Two minutes is the cutoff. Not three hours.** If a backgrounded command or a
 monitor has not finished and has produced **no output** in two minutes, treat it
 as hung: stop it, and find out why with a foreground run you can actually watch.
@@ -888,6 +918,12 @@ Two signals, and **either** is enough:
    `pg_stat_activity` answer this in one call each.
 
 ## Corollary: never pipe a long-running command through a filter
+
+`scripts/run.sh` (shipped into every repo by the briefing sync) does this
+correctly already: `run <cmd>` prints the step, the command and the exit status,
+and `bg <cmd>` sends the whole unfiltered stream to a file and prints its path.
+Source it rather than writing the logging again — and never pipe `bg`'s command
+into anything.
 
 `cmd | grep -E "..."` is how a 10-minute deploy produces an empty output file for
 its whole life. If you want a filtered view, write the full output to a file and
