@@ -17,3 +17,8 @@ export * from "@/backend/pg/schemas/proposals/trips";
 export * from "@/backend/pg/schemas/hitl/reviews";
 export * from "@/backend/pg/schemas/alerts/alerts";
 export * from "@/backend/pg/schemas/ops/health-probes";
+export * from "@/backend/pg/schemas/enums-config";
+export * from "@/backend/pg/schemas/config/people";
+export * from "@/backend/pg/schemas/config/loyalty";
+export * from "@/backend/pg/schemas/config/travel";
+export * from "@/backend/pg/schemas/config/taste";
