@@ -47,6 +47,7 @@ import { settingsRouter } from "./routes/settings";
 import { taskDetailRouter } from "./routes/task-detail";
 import { browseGoalsRouter, browseRunsRouter } from "./routes/shopping/browse";
 import { sightingsRouter } from "./routes/shopping/sightings";
+import { ideasRouter } from "./routes/shopping/ideas";
 import { taskHierarchyRouter } from "./routes/task-hierarchy";
 import { tasksRouter } from "./routes/tasks";
 import { teamNotesRouter } from "./routes/team-notes";
@@ -148,6 +149,7 @@ app.route("/api/goals", goalOccasionsRouter);
 app.route("/api/runs", runsRouter);
 app.route("/api/runs", browseRunsRouter);
 app.route("/api/sightings", sightingsRouter);
+app.route("/api/ideas", ideasRouter);
 // The shopper Overview. Mounted on the same base as the template dashboard
 // router below; their paths do not overlap (/overview vs /stats, /charts,
 // /insights).

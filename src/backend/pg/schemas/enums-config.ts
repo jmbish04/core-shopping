@@ -17,6 +17,7 @@ import {
   TASTE_TIERS,
   TRAVEL_WINDOW_STANCES,
   TRIP_KINDS,
+  IDEA_STATUSES,
   OCCASION_KINDS,
   TRIP_SOURCES,
   WISHLIST_STATUSES,
@@ -35,3 +36,4 @@ export const tripKind = pgEnum("trip_kind", TRIP_KINDS);
 export const tripSource = pgEnum("trip_source", TRIP_SOURCES);
 export const wishlistStatus = pgEnum("wishlist_status", WISHLIST_STATUSES);
 export const occasionKind = pgEnum("occasion_kind", OCCASION_KINDS);
+export const ideaStatus = pgEnum("idea_status", IDEA_STATUSES);
