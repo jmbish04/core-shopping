@@ -1,6 +1,100 @@
 # core-shopping — session handoff
 
-Updated 2026-10-17 (fifth session). Read "This session (2026-10-17)" first;
+Updated 2026-10-25 (sixth session). Read "This session (2026-10-25)" first.
+
+## This session (2026-10-25, sixth) — the configuration layer and the four gaps
+
+**Six PRs, stacked. Review and merge in this order:** #19 schema, #20 API,
+#21 wishlist, #22 occasions, #23 idea bank, #24 config snapshot. Each is cut
+from the one before, so merging out of order means resolving the stack by hand.
+
+| PR | Task | What landed |
+|---|---|---|
+| #19 | `cs-be-1-6` | the twelve config tables, migration 0004 |
+| #20 | `cs-be-2-8`, `cs-c-08` | `/api/config/*` CRUD + bulk, `GET /api/integrations` |
+| #21 | `cs-gap-wishlist` | `wishlist_items`, migration 0005 |
+| #22 | `cs-gap-occasion-calendar` | `occasions` + `goal_occasions`, migration 0006 |
+| #23 | `cs-gap-idea-bank` | `ideas` + `idea_entities`, migration 0007, `/brain` |
+| #24 | `cs-gap-config-asof` | `config_snapshots`, migration 0008 |
+
+**All nine migrations are applied to `core_shopping` and read back** — 9 in the
+ledger against 9 bundled — so `/api/health`'s migration check stays green.
+Every config table is empty: no fixture leaked.
+
+**Four rules this layer added, each with a test behind it:**
+
+- **`neutral` is a stance, not an absence.** The brief calls the gap between
+  ideal and frowned-upon travel ranges "an opportunity for the agent to
+  persuide us the ROI is there". A date no window covers is a DIFFERENT fact
+  and must resolve to null, matching `calendar_checks.window_stance = unknown`.
+- **An unmeasured loyalty balance is null, never 0.** Paired with a nullable
+  `balance_as_of`, and the contract refuses a balance with no read date.
+- **A bulk save that DELETES has to ask.** `PUT /api/config/{resource}` takes
+  `mode`: `upsert` (default) leaves unmentioned rows alone, `replace` deletes
+  them. A client sending a partial list under a default of `replace` would
+  silently destroy the rest.
+- **`/api/integrations` is a DECLARED list, never discovered.** Seven
+  integrations including the four that do not exist, each naming its task. An
+  endpoint reporting only what it can find answers "all clear" for a deleted
+  binding. `not_built` never degrades the verdict; a written-down gap is not an
+  outage.
+
+**Five things that cost real time, worth not rediscovering:**
+
+1. **Drizzle's `transaction()` on node-postgres issues BEGIN/COMMIT, not a
+   savepoint.** Calling it inside a manual `begin` COMMITS the outer
+   transaction, and the closing `rollback` has nothing to undo. **Five fixture
+   rows reached the real database that way**; the leftover-row assertion is the
+   only reason it was noticed. In a verify script the outer transaction must be
+   `db.transaction` itself; a NESTED `tx.transaction()` does use a savepoint,
+   which is what makes a partial-write rollback testable.
+2. **`now()` is constant inside a transaction.** `set updated_at = now()` in a
+   verify fixture is a no-op, so a check written that way is PRE-SATISFIED. One
+   was, and it hid a real bug.
+3. **A Drizzle row is keyed by TypeScript property names.** `created_at`
+   arrives as `createdAt`. A snake_case exclusion list matched nothing and the
+   filter was dead code. Print the keys rather than assuming them.
+4. **Drizzle WRAPS pg errors**: a constraint message is on `error.cause`, not
+   `error.message`. Matching on `error.message` made a correct `restrict` look
+   like a defect.
+5. **A plant that does not apply reads exactly like a passing test.** One
+   `sed` with the wrong indentation left the code untouched and the check went
+   green against code believed broken. Every plant now asserts its edit landed
+   before the run is trusted.
+
+**`scripts/selfcheck-schema-drift.mjs` is new and matters repo-wide.** Every
+other structural self-check asserts the GENERATED migration, so a regression in
+the Drizzle schema stays green — a peer session proved it by making the hotel
+brand index case-sensitive. This runs `drizzle-kit generate` into a scratch
+directory and fails if it would emit a migration, which covers every table at
+once. Note: **drizzle-kit exits 0 even when it fails internally**, so the
+assertion on "No schema changes, nothing to migrate" is what proves the
+comparison happened.
+
+**CI: the red `sync` check on all six PRs is NOT from these changes.**
+`agents-sync` resolves its runner from `AGENTS_SYNC_RUNNER`, which is set to a
+self-hosted Proxmox pool with no `gh` on it, so the job dies on
+`gh: command not found`. No branch in the stack touches a workflow file. And
+**these PRs have no build or test check at all** — `agents-sync` is the only
+PR check; `Workers Builds` runs on `main`. The local gate is the only gate
+these changes have had before merge.
+
+**Two decisions are open for Justin**, recorded in `docs/decisions/`:
+`2026-10-25-venue-stances-holds-countries.md` (the table is named for venues
+and has to hold countries) and `2026-10-25-mermaid-for-docs-model.md` (the ER
+diagram is now 49 relationship lines of unrendered source; the earlier decision
+rejected a CLIENT dependency, which is not the same as rendering at build time).
+
+**Still not built, and these PRs do not pretend otherwise:** `cs-be-3-2`'s
+briefing (so the wishlist, idea and config slices are the functions it will
+compose, not changes to a payload that exists), `cs-be-7-1`'s cron (so
+`GET /api/goals/due` is the rule with no schedule calling it), and anything
+that raises a proposal or writes a review — there is no `insert(proposals)` or
+`insert(reviews)` anywhere in the repo.
+
+## Earlier (2026-10-17, fifth)
+
+Read this next;
 everything under "This session (2026-10-15, fourth)" and below is merged
 to `main` (PR #15, `a66e371`), built by Workers Builds, and probed live.
 PRs #11–#14 (core-browser binding, browser runs, sightings) landed between the
