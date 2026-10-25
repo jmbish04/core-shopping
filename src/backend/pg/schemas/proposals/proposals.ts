@@ -13,6 +13,7 @@ import { index, integer, jsonb, pgTable, real, text, timestamp, uuid, type AnyPg
 
 import { proposalKind, proposalStatus } from "@/backend/pg/schemas/enums-m3";
 import { entities } from "@/backend/pg/schemas/catalog/entities";
+import { wishlistItems } from "@/backend/pg/schemas/config/wishlist";
 import { goals } from "@/backend/pg/schemas/goals/goals";
 import { agentRuns } from "@/backend/pg/schemas/runs/runs";
 
@@ -59,6 +60,13 @@ export const proposalItems = pgTable(
     currency: text("currency"),
     /** Price when the PRIOR proposal was raised, so a drop is visible at a glance. */
     priorPriceCents: integer("prior_price_cents"),
+    /**
+     * The wishlist row this item satisfies (maestro cs-gap-wishlist), so a
+     * proposal can say "this is the slurpee machine you asked for" rather than
+     * leaving a reader to recognise it. The raising logic is cs-be-4-1's; the
+     * column is here so the model is complete when it arrives.
+     */
+    wishlistItemId: uuid("wishlist_item_id").references(() => wishlistItems.id, { onDelete: "set null" }),
     note: text("note").notNull().default(""),
   },
   (t) => [index("proposal_items_proposal_idx").on(t.proposalId, t.position), index("proposal_items_entity_idx").on(t.entityId)],

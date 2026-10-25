@@ -551,6 +551,104 @@ export const VenueStanceSchema = VenueStanceInputSchema.extend({
 export type VenueStance = z.infer<typeof VenueStanceSchema>;
 
 
+/**
+ * A wishlist item's status. `wanted` is the only one a briefing hands to an
+ * agent; `dropped` is kept rather than deleted, so a later sweep does not
+ * re-propose something that was already turned down.
+ */
+export const WISHLIST_STATUSES = ["wanted", "acquired", "dropped"] as const;
+export const WishlistStatusSchema = z.enum(WISHLIST_STATUSES).meta({ id: "WishlistStatus" });
+
+/**
+ * One requirement that disqualifies a find.
+ *
+ * Stored as validated jsonb rather than a table: it is a short list owned by
+ * one row, the same shape `sightings.criteria_match` and `itinerary_items.tips`
+ * already use. `label` is what an agent is told; `attribute`, `operator` and
+ * `value` are the optional machine-readable form, exactly as a goal criterion
+ * carries both.
+ */
+export const WishlistRequirementSchema = z
+  .object({
+    label: z.string().trim().min(1).max(300),
+    attribute: z.string().max(64).nullish(),
+    operator: z.string().max(32).nullish(),
+    value: z.unknown().optional(),
+  })
+  .meta({ id: "WishlistRequirement" });
+export type WishlistRequirement = z.infer<typeof WishlistRequirementSchema>;
+
+/**
+ * A wanted thing, as a row: "I want a shark slurpee machine for example".
+ *
+ * `target_price_cents` is nullable and a null is NOT a target of zero and not
+ * "any price will do" — it means no target has been set, and a surface that
+ * reads it as either would either never flag a good price or flag every price.
+ */
+const wishlistItemFields = {
+  label: z.string().trim().min(1).max(300),
+  /** Who it is for. Null means the household's. */
+  for_person_id: Id.nullish(),
+  /** The goal vocabulary, so a product goal can ask for the product items. */
+  category: z.enum(["experience", "travel", "product", "gift", "deal", "research"]).default("product"),
+  target_price_cents: z.number().int().nonnegative().nullish(),
+  msrp_cents: z.number().int().nonnegative().nullish(),
+  currency: z.string().length(3).default("USD"),
+  hard_requirements: z.array(WishlistRequirementSchema).max(50).default([]),
+  notes: z.string().max(4_000).default(""),
+  /** Set when a sighting is confirmed to BE this thing. */
+  matched_entity_id: Id.nullish(),
+  status: WishlistStatusSchema.default("wanted"),
+} as const;
+
+export const WishlistItemInputSchema = z
+  .object(wishlistItemFields)
+  .refine(
+    (w) =>
+      w.target_price_cents == null || w.msrp_cents == null || w.target_price_cents <= w.msrp_cents,
+    {
+      message: "target_price_cents must not exceed msrp_cents",
+      path: ["target_price_cents"],
+    },
+  )
+  .refine((w) => w.status !== "acquired" || w.matched_entity_id != null, {
+    message: "An acquired item must name the entity it was matched to",
+    path: ["matched_entity_id"],
+  })
+  .meta({ id: "WishlistItemInput" });
+export type WishlistItemInput = z.infer<typeof WishlistItemInputSchema>;
+
+export const WishlistItemPatchSchema = z
+  .object(wishlistItemFields)
+  .partial()
+  .meta({ id: "WishlistItemPatch" });
+
+export const WishlistItemSchema = z
+  .object({
+    id: Id,
+    ...wishlistItemFields,
+    added_at: IsoDateTime,
+    created_at: IsoDateTime,
+    updated_at: IsoDateTime,
+  })
+  .meta({ id: "WishlistItem" });
+export type WishlistItem = z.infer<typeof WishlistItemSchema>;
+
+export const WISHLIST_LIST_FIELDS = {
+  label: { type: "text", label: "Item", sortable: true },
+  category: {
+    type: "select",
+    label: "Category",
+    groupable: true,
+    sortable: true,
+    options: ["experience", "travel", "product", "gift", "deal", "research"],
+  },
+  status: { type: "select", label: "Status", groupable: true, sortable: true, options: WISHLIST_STATUSES },
+  target_price_cents: { type: "number", label: "Target", sortable: true },
+  msrp_cents: { type: "number", label: "List price", sortable: true },
+  added_at: { type: "date", label: "Added", sortable: true },
+} as const satisfies ListFields;
+
 // ---------------------------------------------------------------------------
 // PATCH schemas.
 //
@@ -719,5 +817,6 @@ export const CONFIG_RESOURCES = [
   "taste-genres",
   "venue-stances",
   "trip-history",
+  "wishlist",
 ] as const;
 export type ConfigResource = (typeof CONFIG_RESOURCES)[number];
