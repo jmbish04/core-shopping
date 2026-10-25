@@ -1,0 +1,38 @@
+---
+/**
+ * One documentation topic: a ReUI Frame with a title and one panel.
+ *
+ * Default body is prose (paragraphs, lists, inline `code`); styled through
+ * design tokens only. Pass `flush` to drop the panel padding when the body is
+ * a `DocRows` list or a code block that should run edge to edge.
+ */
+import { Frame, FrameDescription, FrameHeader, FramePanel, FrameTitle } from "@/components/reui/frame";
+
+interface Props {
+  title: string;
+  description?: string;
+  flush?: boolean;
+}
+
+const { title, description, flush = false } = Astro.props;
+---
+
+<Frame>
+  <FrameHeader>
+    <FrameTitle>{title}</FrameTitle>
+    {description && <FrameDescription>{description}</FrameDescription>}
+  </FrameHeader>
+  {
+    flush ? (
+      <FramePanel className="p-0">
+        <slot />
+      </FramePanel>
+    ) : (
+      <FramePanel>
+        <div class="text-muted-foreground flex flex-col gap-3 text-sm leading-6 [&_a]:text-foreground [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary [&_code]:bg-muted [&_code]:text-foreground [&_code]:rounded-sm [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_li]:mt-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_strong]:text-foreground [&_strong]:font-medium [&_ul]:list-disc [&_ul]:pl-5">
+          <slot />
+        </div>
+      </FramePanel>
+    )
+  }
+</Frame>

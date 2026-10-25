@@ -1,0 +1,202 @@
+---
+/**
+ * Domain model: the Postgres tables and how they connect, derived from
+ * `src/backend/pg/schemas/**` and the vocabularies in `src/shared/contracts`.
+ *
+ * The vocabulary lists are imported from the contracts, not retyped, so this
+ * page cannot drift from the enums the API and the database enforce.
+ */
+import DocsPage from "@/components/docs/DocsPage.astro";
+import DocRows from "@/components/docs/DocRows.astro";
+import DocSection from "@/components/docs/DocSection.astro";
+import type { DocRow } from "@/components/docs/types";
+import { CodeBlock } from "@/components/ui/code-block";
+import {
+  ALERT_TRIGGERS,
+  ENTITY_KINDS,
+  GOAL_CATEGORIES,
+  LESSON_SCOPES,
+  PROPOSAL_STATUSES,
+  VERDICTS,
+} from "@/shared/contracts";
+
+const list = (values: readonly string[]) => values.join(", ");
+
+const goalRows: DocRow[] = [
+  { term: "goals", mono: true, body: `A standing brief. Category is one of ${list(GOAL_CATEGORIES)}. Carries a budget range, a date window, break rules ("if you see this, tell me"), and an expected cadence that drives the stale-goal check.` },
+  { term: "goal_criteria", mono: true, body: "Hard criteria disqualify a find. Soft criteria are weighted preferences. Each belongs to one goal." },
+  { term: "goal_revisions", mono: true, body: "Every write to a goal, by a person or an agent, with the field-level diff and a reason. Newest first in the API." },
+  { term: "tags, tag_mappings", mono: true, body: "A real tag vocabulary, attachable to any row by table name and id. Never a comma-separated column." },
+];
+
+const runRows: DocRow[] = [
+  { term: "agent_runs", mono: true, body: "One agent session: which client (claude, gpt, gemini, browser, other), the model, status, a summary, quality and uniqueness scores, and counts of sightings, new entities and proposals." },
+  { term: "run_goals", mono: true, body: "Which goals a run worked. A run can work several goals, and a goal has many runs." },
+  { term: "run_events", mono: true, body: "The run's trace, one row per step, with a level and a kind. Meant to be purged after 90 days; the purge job is not built yet." },
+  { term: "mcp_tool_calls", mono: true, body: "Every MCP call an agent made. Arguments are stored as a digest, never in full. Meant to be purged after 90 days; the purge job is not built yet." },
+];
+
+const catalogRows: DocRow[] = [
+  { term: "sources", mono: true, body: "Where something was seen: a web domain, an email, an API, Reddit, a review site. Carries a 0 to 1 reputation once rated." },
+  { term: "entities", mono: true, body: `The thing itself, one row however many times it is seen. Kinds: ${list(ENTITY_KINDS)}. Identified by a fingerprint, with a content hash and a 384-dimension embedding for near-duplicate matching.` },
+  { term: "performers, venues, events, products, flights, routes, hotels", mono: true, body: "Kind tables, each one row per entity of that kind, holding the typed fields: a performer's genres, an event's start and sales end, a product's brand and list price, a flight's dated itinerary and cabin, and a route's city pair, carrier and first day of service." },
+];
+
+const observationRows: DocRow[] = [
+  { term: "sightings", mono: true, body: "One entity seen once, by one run, from one source. Records the URL, price, list price, sale flag, points price, the agent's score and rationale, and whether it was a re-sighting." },
+  { term: "price_observations", mono: true, body: "Price over time per seller for one entity. This is what makes a drop visible." },
+  { term: "images", mono: true, body: "Cloudflare Images references, deduplicated by a hash of the source URL." },
+];
+
+const proposalRows: DocRow[] = [
+  { term: "proposals", mono: true, body: `The agent raising its hand. Kind is item or trip. Status is one of ${list(PROPOSAL_STATUSES)}. Carries why-now, which criteria were met, a match score and an ROI score, an expiry, and a link to the proposal it supersedes.` },
+  { term: "proposal_items", mono: true, body: "The things inside a proposal, each pointing at its entity, with price, list price and the price when the prior proposal was raised." },
+];
+
+const tripRows: DocRow[] = [
+  { term: "trip_packages", mono: true, body: "The trip header for a trip proposal: origin airport, dates, total nights, estimated cash and estimated points per programme." },
+  { term: "trip_legs", mono: true, body: "One stop. City, arrive and depart dates, nights, what makes it special, and shopping and scenery notes." },
+  { term: "itinerary_days", mono: true, body: "One day in a leg, with a wake time and an explicit sleep-in flag, so resting is planned rather than omitted." },
+  { term: "itinerary_items", mono: true, body: "One scheduled thing: a meal, activity, transit, rest, shopping, check-in, flight or free time. Carries start, end, depart-by, transport mode and note, cost, tips with source links, and a booking link. Items sharing a fork group are alternatives and exactly one is selected." },
+  { term: "flight_options", mono: true, body: "Carrier, route, times, cabin, nonstop, seat product, cash price, points price and programme, and the transfer path for the points." },
+  { term: "hotel_options", mono: true, body: "Brand, property, nightly and total price, points, why it fits, the transit note, and a violates-rule field the interface must flag." },
+  { term: "calendar_checks", mono: true, body: "Whether the dates are possible: conflicts in the window, days since the last trip, workdays off needed, the stance of that date range (ideal, frowned or neutral), and a verdict." },
+];
+
+const brainRows: DocRow[] = [
+  { term: "review_reason_codes", mono: true, body: "The operator-editable vocabulary of reasons behind a verdict, each positive, negative or neutral, for one category or all." },
+  { term: "reviews", mono: true, body: `A verdict on a proposal: one of ${list(VERDICTS)}, the reason codes, a note, and how long the decision took. An undo is recorded in an undone-at column, never deleted.` },
+  { term: "lessons", mono: true, body: `What the system believes you want, written as an instruction an agent can act on. Scope is one of ${list(LESSON_SCOPES)}. A lesson starts as proposed and only a person makes it active.` },
+  { term: "lesson_evidence", mono: true, body: "The receipts: which reviews support a lesson, with a weight." },
+];
+
+const otherRows: DocRow[] = [
+  { term: "alerts", mono: true, body: `A critical find, kept whether or not it printed. Trigger is one of ${list(ALERT_TRIGGERS)}. Records whether it was printed, listed or declined, and which rule suppressed a print.` },
+  { term: "health_probes", mono: true, body: "A scratch table the health check writes and reads back, to prove a write is visible to the next read." },
+];
+
+const relationshipRows: DocRow[] = [
+  { term: "Deleting a goal", body: "Removes its criteria, revisions, run links and goal-scoped lessons. Sightings, proposals, reviews and alerts keep their rows with the goal cleared." },
+  { term: "Deleting a run", body: "Removes its events and goal links. Tool calls, sightings and proposals keep their rows with the run cleared." },
+  { term: "Deleting an entity", body: "Removes its kind row, sightings, price observations and images. Proposal items and alerts keep their rows with the entity cleared." },
+  { term: "Deleting a proposal", body: "Removes its items, trip package, legs, days, itinerary items, flight and hotel options, calendar check and reviews. Alerts keep their rows with the proposal cleared." },
+  { term: "Reason codes", body: "A review stores the codes as text, without a foreign key. A retired code stays readable on the reviews that used it." },
+  { term: "Tags", body: "A tag mapping names its subject by table name and id, so it cannot be enforced by a foreign key." },
+];
+
+const erDiagram = `erDiagram
+  goals ||--o{ goal_criteria : "has"
+  goals ||--o{ goal_revisions : "versioned by"
+  goals ||--o{ run_goals : "worked in"
+  agent_runs ||--o{ run_goals : "works"
+  agent_runs ||--o{ run_events : "traced by"
+  agent_runs |o--o{ mcp_tool_calls : "audited by"
+
+  sources |o--o{ sightings : "seen on"
+  entities ||--o{ sightings : "seen as"
+  agent_runs |o--o{ sightings : "records"
+  goals |o--o{ sightings : "for"
+  entities ||--o{ price_observations : "priced by"
+  sightings |o--o{ price_observations : "yields"
+  entities ||--o{ images : "pictured by"
+  entities |o--o{ entities : "merged into"
+  entities ||--o| performers : "kind table"
+  entities ||--o| venues : "kind table"
+  entities ||--o| events : "kind table"
+  entities ||--o| products : "kind table"
+  entities ||--o| flights : "kind table"
+  entities ||--o| hotels : "kind table"
+
+  goals |o--o{ proposals : "raised for"
+  agent_runs |o--o{ proposals : "raised by"
+  proposals |o--o{ proposals : "supersedes"
+  proposals ||--o{ proposal_items : "contains"
+  entities |o--o{ proposal_items : "is"
+
+  proposals ||--o| trip_packages : "trip header"
+  proposals ||--o{ trip_legs : "stops"
+  trip_legs ||--o{ itinerary_days : "days"
+  itinerary_days ||--o{ itinerary_items : "items"
+  proposals ||--o{ flight_options : "flights"
+  proposals ||--o{ hotel_options : "hotels"
+  trip_legs |o--o{ hotel_options : "stay at"
+  proposals ||--o| calendar_checks : "fit"
+
+  proposals ||--o{ reviews : "decided by"
+  goals |o--o{ reviews : "scoped to"
+  goals |o--o{ lessons : "scoped to"
+  lessons |o--o{ lessons : "supersedes"
+  lessons ||--o{ lesson_evidence : "backed by"
+  reviews ||--o{ lesson_evidence : "supports"
+
+  goals |o--o{ alerts : "raises"
+  proposals |o--o{ alerts : "raises"
+  entities |o--o{ alerts : "raises"`;
+---
+
+<DocsPage
+  title="Domain model"
+  description="The tables behind core-shopping and how they connect, read from the schema files and the shared contracts."
+>
+  <DocSection title="Where the data lives">
+    <p>
+      Shopper data is in Postgres: the <code>core_shopping</code> database on the shared Postgres host, reached through
+      Hyperdrive, with pgvector for the embedding columns on entities, reviews and lessons. The Worker's D1 database
+      holds the template's lab data and the health check history, not shopper data.
+    </p>
+    <p>
+      Three conventions hold everywhere. Money is integer cents plus a currency code, never a float. Points are an
+      integer amount plus a programme id. Times are ISO-8601 with a zone, and calendar dates are <code>YYYY-MM-DD</code>.
+      The contracts in <code>src/shared/contracts</code> define each shape once, and both the API and the interface
+      import them.
+    </p>
+  </DocSection>
+
+  <DocSection title="Goals" description="What agents are asked to look for." flush>
+    <DocRows rows={goalRows} />
+  </DocSection>
+
+  <DocSection title="Runs" description="What agents did." flush>
+    <DocRows rows={runRows} />
+  </DocSection>
+
+  <DocSection title="Catalog" description="What exists, once." flush>
+    <DocRows rows={catalogRows} />
+  </DocSection>
+
+  <DocSection title="Observations" description="Every time something was seen." flush>
+    <DocRows rows={observationRows} />
+  </DocSection>
+
+  <DocSection title="Proposals" description="What reaches you." flush>
+    <DocRows rows={proposalRows} />
+  </DocSection>
+
+  <DocSection
+    title="Trip packages"
+    description="A trip proposal is a proposal plus these. The planning burden is carried here."
+    flush
+  >
+    <DocRows rows={tripRows} />
+  </DocSection>
+
+  <DocSection title="Review and the brain" description="How your decisions become instructions." flush>
+    <DocRows rows={brainRows} />
+  </DocSection>
+
+  <DocSection title="Alerts and health" flush>
+    <DocRows rows={otherRows} />
+  </DocSection>
+
+  <DocSection
+    title="How the tables relate"
+    description="Mermaid source. Cardinality is on every line; the optional end of a line is the side that may be empty."
+    flush
+  >
+    <CodeBlock client:visible className="rounded-none bg-transparent ring-0" filename="domain-model.mmd" language="mermaid" code={erDiagram} maxLines={24} />
+  </DocSection>
+
+  <DocSection title="What a delete does" description="Set by the foreign keys in the schema." flush>
+    <DocRows rows={relationshipRows} />
+  </DocSection>
+</DocsPage>

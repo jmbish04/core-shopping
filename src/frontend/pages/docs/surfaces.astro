@@ -1,0 +1,148 @@
+---
+/**
+ * Surfaces and API: the shopper routes, what each is for and whether it is
+ * built, plus the access model and the developer links.
+ *
+ * The shopper route list is read from `navGroups` in `@/lib/config`, so a new
+ * shopper page appears here without a second copy of the route table. The
+ * descriptions and status per route live in `info` below; checked against the
+ * page files in `src/frontend/pages` on 2026-10-17.
+ */
+import DocsPage from "@/components/docs/DocsPage.astro";
+import DocRows from "@/components/docs/DocRows.astro";
+import DocSection from "@/components/docs/DocSection.astro";
+import type { DocRow, DocRowStatus } from "@/components/docs/types";
+import { navGroups } from "@/lib/config";
+
+const info: Record<string, { body: string; status: DocRowStatus }> = {
+  "/": {
+    status: "built",
+    body: "The Overview. A strip of headline figures, run throughput by outcome, incidents, a run strip for each goal, and recent activity with a way into review. Every figure comes from one request to the dashboard endpoint, and an unknown value is shown as unknown with the reason.",
+  },
+  "/goals": {
+    status: "built",
+    body: "The goals console. A data grid grouped by category, health tabs, the filter builder, enable switches and a bulk pause and resume bar, all kept in the address so a view can be shared.",
+  },
+  "/review": {
+    status: "planned",
+    body: "Where proposals will be swiped, with reasons asked after the verdict. A placeholder today.",
+  },
+  "/notifications": {
+    status: "planned",
+    body: "Critical alerts and the page a printed receipt's barcode opens. A placeholder today.",
+  },
+  "/findings": {
+    status: "planned",
+    body: "The catalog of everything seen, with price history. A placeholder today.",
+  },
+  "/proposals": {
+    status: "planned",
+    body: "The proposal pipeline and trip packages. A placeholder today.",
+  },
+  "/brain": {
+    status: "planned",
+    body: "What the agents have learned, with lessons to accept or retire. A placeholder today.",
+  },
+  "/runs": {
+    status: "built",
+    body: "The run queue, grouped by status in triage order, with an attention filter and agent and goal filters.",
+  },
+  "/settings": {
+    status: "planned",
+    body: "Hotel brands, loyalty balances, travel windows, taste and integrations. A placeholder today.",
+  },
+};
+
+const shopperItems = navGroups.find((group) => group.label === "Shopper")?.items ?? [];
+const settingsItems = navGroups.find((group) => group.label === "Settings")?.items ?? [];
+
+const routeRows: DocRow[] = [...shopperItems, ...settingsItems].map((item) => ({
+  term: item.label,
+  href: item.href,
+  mono: false,
+  tag: item.href,
+  status: info[item.href]?.status,
+  body: info[item.href]?.body ?? "",
+}));
+
+const detailRows: DocRow[] = [
+  {
+    term: "Run detail",
+    tag: "/runs/{id}",
+    status: "built",
+    body: "One run: its step trace, MCP tool calls, facts, goals, sightings and proposals. A browser run adds a button to refresh from core-browser.",
+  },
+  {
+    term: "Goal viewport",
+    tag: "/goals/{slug}",
+    status: "planned",
+    body: "One goal with its charts, instructions and revision history, runs, findings and learning. The goals console and the Overview currently link to the run queue filtered by goal instead.",
+  },
+  {
+    term: "Sign in",
+    tag: "/login",
+    status: "built",
+    body: "A passcode page. Every page redirects here until you sign in, and the session lasts 400 days.",
+  },
+];
+
+const devRows: DocRow[] = [
+  { term: "/openapi.json", mono: true, href: "/openapi.json", body: "The OpenAPI 3.1 document. Every shopper route is described here with its request and response shapes." },
+  { term: "/scalar", mono: true, href: "/scalar", body: "Interactive API reference." },
+  { term: "/swagger", mono: true, href: "/swagger", body: "Try-it-out request explorer." },
+  { term: "/api/health", mono: true, href: "/api/health", body: "The health verdict. Public, like /api/ping, so a monitor can read it without signing in." },
+];
+
+const labRows: DocRow[] = [
+  { term: "Lab", tag: "/lab", href: "/lab", body: "The starter template's reference pages, kept on purpose and moved under /lab: dashboard, projects, tasks, files, inbox, notes, activity, twelve chat surfaces and settings. They read the Worker's D1 database, not shopper data, and are there to copy from." },
+];
+---
+
+<DocsPage
+  title="Surfaces and API"
+  description="Every page in the interface, what it is for, and the API and access model behind it."
+>
+  <DocSection title="Access">
+    <p>
+      The whole Worker sits behind one passcode. Pages redirect to <code>/login</code> until you sign in. The API
+      answers 401 without credentials, and accepts the same passcode as a bearer token, so scripts and agents use one
+      credential. The health and ping endpoints are the only public API routes.
+    </p>
+  </DocSection>
+
+  <DocSection
+    title="Shopper pages"
+    description="The navigation order. The badge on the right is whether the page does its job today."
+    flush
+  >
+    <DocRows rows={routeRows} />
+  </DocSection>
+
+  <DocSection title="Pages inside a section" flush>
+    <DocRows rows={detailRows} />
+  </DocSection>
+
+  <DocSection
+    title="API and developer links"
+    description="Also at the foot of the navigation rail on every page."
+    flush
+  >
+    <DocRows rows={devRows} />
+  </DocSection>
+
+  <DocSection title="The lab" flush>
+    <DocRows rows={labRows} />
+  </DocSection>
+
+  <DocSection title="Conventions the interface follows">
+    <ul>
+      <li>
+        No mock data. A page shows real rows or a real empty state, and an unknown figure is shown as unknown rather
+        than as zero.
+      </li>
+      <li>A never-run goal is not stale, and an accept rate of none is not an accept rate of 0%.</li>
+      <li>Money is stored as integer cents and formatted for display. Every quantity carries thousands separators.</li>
+      <li>One surface per screen, on the ReUI default theme, dark by default.</li>
+    </ul>
+  </DocSection>
+</DocsPage>

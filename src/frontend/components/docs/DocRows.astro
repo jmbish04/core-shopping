@@ -1,0 +1,55 @@
+---
+/**
+ * A divided list of term / explanation rows, the shape the old template docs
+ * used for its stack table. Place inside `<DocSection flush>`.
+ *
+ * `status` draws a ReUI Badge so what is built reads at a glance; `tag` draws
+ * a neutral outline badge (a goal category, an enum value). Bodies are plain
+ * strings: a row that needs markup is a paragraph in a prose section instead.
+ */
+import { Badge } from "@/components/reui/badge";
+import type { DocRow, DocRowStatus } from "./types";
+
+interface Props {
+  rows: DocRow[];
+}
+
+const { rows } = Astro.props;
+
+const statusLabel: Record<DocRowStatus, string> = {
+  built: "Built",
+  partial: "Partly built",
+  planned: "Not built",
+  blocked: "Blocked",
+};
+const statusVariant = {
+  built: "success-light",
+  partial: "info-light",
+  planned: "warning-light",
+  blocked: "destructive-light",
+} as const;
+---
+
+<div class="divide-border/60 divide-y">
+  {
+    rows.map((row) => (
+      <div class="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[12rem_1fr_auto] sm:items-start sm:gap-4">
+        {row.href ? (
+          <a
+            href={row.href}
+            class:list={["text-foreground hover:text-primary text-sm font-medium transition-colors", row.mono && "font-mono"]}
+          >
+            {row.term}
+          </a>
+        ) : (
+          <span class:list={["text-foreground text-sm font-medium", row.mono && "font-mono"]}>{row.term}</span>
+        )}
+        <span class="text-muted-foreground text-sm leading-6">{row.body}</span>
+        <span class="flex flex-wrap items-center gap-1 sm:justify-end">
+          {row.tag && <Badge variant="outline">{row.tag}</Badge>}
+          {row.status && <Badge variant={statusVariant[row.status]}>{statusLabel[row.status]}</Badge>}
+        </span>
+      </div>
+    ))
+  }
+</div>

@@ -1,0 +1,200 @@
+---
+/**
+ * Not built yet: what the Maestro plans still hold, grouped by epic.
+ *
+ * This is a SNAPSHOT of the `core-shopping` project in colby-maestro taken on
+ * 2026-10-17 (backlog and blocked items, plus contracts written but awaiting
+ * sign-off). Maestro is the live record; this page does not query it, because
+ * a docs page that silently shows stale task state is worse than one that says
+ * when it was taken. Refresh it when an epic closes.
+ */
+import DocsPage from "@/components/docs/DocsPage.astro";
+import DocRows from "@/components/docs/DocRows.astro";
+import DocSection from "@/components/docs/DocSection.astro";
+import type { DocRow } from "@/components/docs/types";
+
+const backend: DocRow[] = [
+  {
+    term: "BE-3 MCP server",
+    tag: "9 open",
+    status: "planned",
+    body: "The door for scheduled agents: a code-mode server at /mcp. It carries the briefing, the run lifecycle, propose, past-review lookups, goal management from chat and integration operations. It also ships the playbook and prompt templates agents run from, and an MCP App view for proposals. Until it lands, only browser runs can feed the system.",
+  },
+  {
+    term: "BE-2 API",
+    tag: "5 open",
+    status: "planned",
+    body: "The routes the review and proposal screens need: findings and entities, review, proposals and trip packages, lessons with a briefing preview, and settings. Goals, runs, sightings and the Overview are done.",
+  },
+  {
+    term: "BE-5 Learning loop",
+    tag: "4 open",
+    status: "planned",
+    body: "The reason vocabulary and verdict signals, the daily job that turns reviews into proposed lessons under a hard compute ceiling, ranking of lessons and past reviews, and scoring of each run for quality and uniqueness.",
+  },
+  {
+    term: "BE-4 Dedupe and re-sighting",
+    tag: "2 open",
+    status: "planned",
+    body: "Near-duplicate detection by embedding similarity, recording merge suggestions instead of merging automatically. And the policy for when a re-sighting resurfaces: a price drop, new dates, changed availability, or a calendar conflict that cleared.",
+  },
+  {
+    term: "BE-6 Integrations",
+    tag: "6 open",
+    status: "planned",
+    body: "Calendar checks through google-workspace-mcp, Spotify taste sync, Cloudflare Images, ingestion of reviews and tips, and Gmail deal and newsletter signals. Browser runs, the sixth task, are blocked: they run end to end, but 7 of 8 live runs failed on model output that was not JSON or came back empty.",
+  },
+  {
+    term: "BE-8 Critical alerts",
+    tag: "5 open",
+    status: "planned",
+    body: "The dopamine Worker connection, the notifications schema and API, the policy that decides what earns a printed receipt (caps per day and week, quiet hours, one print per find and trigger), the flag_critical operation, and a barcode round trip proven on the printer.",
+  },
+  {
+    term: "BE-7 Operations and cost",
+    tag: "4 open",
+    status: "planned",
+    body: "Cron triggers for the lesson job, retention purges, the stale-goal detector and the browser-run scheduler. Structured and mirrored logging with an MCP audit trail. Guards on Workers AI compute and storage. And real configuration seeded through the API.",
+  },
+  {
+    term: "BE-1 Schema",
+    tag: "2 open",
+    status: "planned",
+    body: "The configuration tables: people, preferences, hotel brand rules, loyalty programmes and accounts, transfer partners, travel windows, home airports, taste artists and genres, venue stances and trip history. And the index checks and retention rules for every table.",
+  },
+  {
+    term: "Contract",
+    tag: "10 open",
+    status: "partial",
+    body: "Eight shared contracts are written and awaiting sign-off. Two remain: configuration and integrations, and an end-to-end test in which a scripted agent session shows up in the interface.",
+  },
+];
+
+const frontend: DocRow[] = [
+  {
+    term: "FE-5 Review",
+    tag: "5 open",
+    status: "planned",
+    body: "The swipe deck: the card and queue rail, the swipe itself, the reasons questionnaire after it, a trip-package variant, and filters with snooze and a tray of silent updates.",
+  },
+  {
+    term: "FE-7 Proposals and trips",
+    tag: "6 open",
+    status: "planned",
+    body: "The pipeline board, and the trip package in parts: overview and legs, the day-by-day itinerary, choose-your-own-adventure forks, flight and hotel options, and the calendar fit panel.",
+  },
+  {
+    term: "FE-9 Settings",
+    tag: "6 open",
+    status: "planned",
+    body: "Hotel brands, venue stances and preferences, loyalty balances and transfer partners, a travel windows calendar, people and taste profile, and the integrations page.",
+  },
+  {
+    term: "FE-3 Goal viewport",
+    tag: "6 open",
+    status: "planned",
+    body: "One page per goal: header and figures, quality against uniqueness, instructions with revision history, runs and logs, findings and price watch, and what has been learned.",
+  },
+  {
+    term: "FE-8 Brain",
+    tag: "3 open",
+    status: "planned",
+    body: "Lessons by scope, proposed lessons reviewed with their evidence, and lesson history with a preview of what agents will read.",
+  },
+  {
+    term: "FE-6 Findings",
+    tag: "2 open",
+    status: "planned",
+    body: "A findings grid with grouping and advanced filters, and an entity detail sheet.",
+  },
+  {
+    term: "FE-12 Notifications",
+    tag: "2 open",
+    status: "planned",
+    body: "The notifications list, and the page a printed receipt's barcode opens.",
+  },
+  {
+    term: "FE-2, FE-4, FE-0, FE-11",
+    tag: "4 open",
+    status: "planned",
+    body: "A quick-peek sheet on the goals console, the goal creation wizard, the @mcpcn component registry, and a quality gate run against the deployed Worker.",
+  },
+];
+
+const gaps: DocRow[] = [
+  {
+    term: "Route announcements",
+    tag: "spec-gap",
+    status: "built",
+    body: "The brief asks for watching SFO, OAK and SJC for newly announced direct routes. A route announcement has no dates, so it cannot be stored as a fare. It is now its own kind of entity, identified by its city pair and carrier, so the same announcement on two sites counts once while a dated fare on that pair stays separate.",
+  },
+  {
+    term: "Occasions and sales calendar",
+    tag: "spec-gap",
+    status: "planned",
+    body: "The brief names Prime Day, restaurant week and gift occasions. Nothing makes a goal due before the window opens. Travel windows exist only for travel, and only in the plan.",
+  },
+  {
+    term: "Wish list",
+    tag: "spec-gap",
+    status: "planned",
+    body: "Wanted things, such as a particular appliance, should be rows an agent can match against, each with a target price and price history. Today a wish list would be a sentence inside one goal.",
+  },
+  {
+    term: "Idea bank",
+    tag: "spec-gap",
+    status: "planned",
+    body: "The brief wants good ideas for next year accumulated over time, including ideal and poor date ranges. Proposals hold dated offers, and lessons hold beliefs. A dateless idea has nowhere to live.",
+  },
+  {
+    term: "Configuration history",
+    tag: "spec-gap",
+    status: "planned",
+    body: "The brief wants a review read against the settings of that time. Proposals store no reference to configuration, and the planned briefing returns whatever is current, so a past review cannot be judged fairly.",
+  },
+];
+
+const bugs: DocRow[] = [
+  { term: "API error text", tag: "bug", body: "The client shows \"[object Object]\" for every error returned in the standard error envelope." },
+  { term: "Sparkline tooltip", tag: "bug", body: "The Overview's sparkline tooltip labels each UTC day as the previous day for viewers west of UTC." },
+  { term: "Goals findings count", tag: "bug", body: "The findings count on the goals console is always 0." },
+];
+---
+
+<DocsPage
+  title="Not built yet"
+  description="What the plans still hold, grouped by epic. A snapshot taken on 2026-10-17."
+>
+  <DocSection title="How to read this page">
+    <p>
+      The work is tracked in Colby Maestro under the project key <code>core-shopping</code>, as three plans: a contract
+      plan, a frontend plan and a backend plan. Maestro is the live record. This page is a snapshot, so check Maestro
+      before relying on any line here.
+    </p>
+    <p>
+      Done so far: the platform and database, the schema, the goals, runs and sightings routes, browser-run plumbing, the goals
+      console, the Overview, and the run queue and run detail pages. Everything below is what remains. Backend items come
+      first, because the interface cannot show what nothing yet writes.
+    </p>
+  </DocSection>
+
+  <DocSection title="Backend and data" description="Largest gap first." flush>
+    <DocRows rows={backend} />
+  </DocSection>
+
+  <DocSection title="Interface" description="Pages that are placeholders today." flush>
+    <DocRows rows={frontend} />
+  </DocSection>
+
+  <DocSection
+    title="Requests in the brief that the plans had no home for"
+    description="Found by auditing the plans against the brief, then filed as tasks tagged spec-gap."
+    flush
+  >
+    <DocRows rows={gaps} />
+  </DocSection>
+
+  <DocSection title="Known bugs" description="Open in Maestro." flush>
+    <DocRows rows={bugs} />
+  </DocSection>
+</DocsPage>
