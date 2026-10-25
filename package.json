@@ -37,7 +37,8 @@
     "verify:dashboard": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-dashboard-sql.mjs",
     "verify:runs": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-runs-queue-sql.mjs",
     "verify:sightings": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-record-sighting.mjs",
-    "verify:run-detail": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-run-detail-sql.mjs"
+    "verify:run-detail": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-run-detail-sql.mjs",
+    "verify:goal-counts": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-goal-counts-sql.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.3",

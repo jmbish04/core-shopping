@@ -24,7 +24,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
-import { cabinClass, entityKind, performerType, sourceKind } from "@/backend/pg/schemas/enums";
+import { cabinClass, entityKind, performerType, routeStatus, sourceKind } from "@/backend/pg/schemas/enums";
 
 export const sources = pgTable(
   "sources",
@@ -124,6 +124,33 @@ export const flights = pgTable(
     seatProduct: text("seat_product").notNull().default(""),
   },
   (t) => [index("flights_route_idx").on(t.origin, t.destination, t.departOn)],
+);
+
+/**
+ * A scheduled service between two airports, with no dates (cs-gap-route-watch).
+ *
+ * The brief asks to watch "SFO, OAK, and SJC for new routes being annouced with
+ * direct flights". That announcement arrives months before any fare, so it
+ * cannot be a `flight`: the flight fingerprint needs `departOn`, and without it
+ * two sites reporting one announcement become two entities. A route is
+ * identified by its city pair and carrier, so every later report of the same
+ * service is a re-sighting and `sighting_count` means something.
+ */
+export const routes = pgTable(
+  "routes",
+  {
+    entityId: entityPk(),
+    origin: text("origin").notNull(),
+    destination: text("destination").notNull(),
+    carrier: text("carrier").notNull().default(""),
+    nonstop: boolean("nonstop"),
+    status: routeStatus("status").notNull().default("announced"),
+    /** When service begins, when the announcement says. */
+    serviceStartsOn: date("service_starts_on"),
+    /** e.g. "Mint Suite", "A350 Business" — the reason a route is worth flying. */
+    seatProduct: text("seat_product").notNull().default(""),
+  },
+  (t) => [index("routes_pair_idx").on(t.origin, t.destination), index("routes_origin_status_idx").on(t.origin, t.status)],
 );
 
 export const hotels = pgTable("hotels", {
