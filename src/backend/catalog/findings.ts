@@ -93,7 +93,14 @@ export function priceToCents(value: unknown): number | null {
 }
 
 /** Entity kinds a browser finding may name. */
-export const BROWSER_FINDING_KINDS = ["event", "product", "flight", "hotel", "experience"] as const;
+export const BROWSER_FINDING_KINDS = [
+  "event",
+  "product",
+  "flight",
+  "route",
+  "hotel",
+  "experience",
+] as const;
 
 /**
  * The entity kind to use when a finding names none, from the goal category.
@@ -150,6 +157,14 @@ export interface BrowserFinding {
   venue?: unknown;
   city?: unknown;
   notes?: unknown;
+  /** Airport codes, for a `flight` or a `route`. */
+  origin?: unknown;
+  destination?: unknown;
+  carrier?: unknown;
+  nonstop?: unknown;
+  /** A route's first day of service, when the announcement gives one. */
+  service_starts_on?: unknown;
+  seat_product?: unknown;
 }
 
 /** What {@link parseBrowserFindings} read. */
@@ -202,6 +217,33 @@ function str(value: unknown, max = 500): string | null {
 }
 
 /**
+ * An airport as its IATA code.
+ *
+ * @param value - `"SFO"`, `"sfo"`, `"San Francisco (SFO)"`, or anything else.
+ * @returns The three-letter code, or `null` when the text carries none.
+ * @example
+ * airportCode("San Francisco (SFO)"); // "SFO"
+ */
+export function airportCode(value: unknown): string | null {
+  const text = str(value, 120);
+  if (!text) return null;
+  // ponytail: a bare 3-letter word is the code; a longer name must parenthesise
+  // it, so "Taipei" alone is refused rather than guessed at.
+  const paren = text.match(/\(([A-Za-z]{3})\)/);
+  if (paren) return paren[1].toUpperCase();
+  return /^[A-Za-z]{3}$/.test(text) ? text.toUpperCase() : null;
+}
+
+/** A boolean a model may have written as a word. `null` when it said nothing usable. */
+function bool(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  const text = str(value, 20)?.toLowerCase();
+  if (text === "true" || text === "yes" || text === "nonstop" || text === "direct") return true;
+  if (text === "false" || text === "no") return false;
+  return null;
+}
+
+/**
  * A browser finding as a {@link SightingInput}. A finding with no title and no
  * URL is not a sighting.
  *
@@ -243,6 +285,14 @@ export function findingToSighting(
       city: str(finding.city, 200),
       startsAt: dates,
       departOn: kind === "flight" ? dates : null,
+      // A flight is a dated itinerary on a route; a route has no dates at all.
+      // Both are identified by the city pair, so pass it for either kind.
+      origin: airportCode(finding.origin),
+      destination: airportCode(finding.destination),
+      carrier: str(finding.carrier, 120),
+      nonstop: bool(finding.nonstop),
+      serviceStartsOn: kind === "route" ? str(finding.service_starts_on, 100) : null,
+      seatProduct: str(finding.seat_product, 120),
     },
     runId: ctx.runId,
     goalId: ctx.goalId,

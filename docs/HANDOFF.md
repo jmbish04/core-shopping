@@ -1,6 +1,7 @@
 # core-shopping — session handoff
 
-Updated 2026-10-15 (fourth session, at hand-off). Everything below is merged
+Updated 2026-10-17 (fifth session). Read "This session (2026-10-17)" first;
+everything under "This session (2026-10-15, fourth)" and below is merged
 to `main` (PR #15, `a66e371`), built by Workers Builds, and probed live.
 PRs #11–#14 (core-browser binding, browser runs, sightings) landed between the
 third and fourth sessions; their record is in Maestro, not here.
@@ -11,6 +12,78 @@ build says so. The Builds REST API refuses every account token on this machine
 (`12006 Invalid token`); the self-hosted Cloudflare API MCP
 (`cloudflare-api-mcp.hacolby.workers.dev/mcp`, bearer `WORKER_API_KEY`) works,
 and so does reading the `Workers Builds` check run on the commit in GitHub.
+
+## This session (2026-10-17, fifth)
+
+**The original brief now lives in the repo: `docs/original-brief.md`.** It is
+Justin's own words, verbatim, typos kept. Every plan and task in Maestro derives
+from it, so it is the thing to audit against. Do not tidy it.
+
+**Audited the built app against that brief.** The three Maestro plans cover it
+closely — `trip_legs`, `itinerary_days`, `itinerary_items` with `fork_group_id`
+forks and `depart_by`, `flight_options` with `points_amount` and
+`transfer_path`, `hotel_options` with `violates_rule`, `calendar_checks` with
+`days_since_last_trip` and `workdays_off_needed`, `flights.seat_product` for a
+Mint Suite, `products` with brand, model and `msrp_cents`. Five things the brief
+asks for had no home anywhere in the plan, and are now filed:
+
+| Task | What the brief asked for that nothing held |
+|---|---|
+| `cs-gap-route-watch` | a newly announced nonstop, which has no dates and so no `flight` fingerprint |
+| `cs-gap-occasion-calendar` | Prime Day and SF Restaurant Week: being due BEFORE a window, not during it |
+| `cs-gap-wishlist` | a wanted thing as a row ("a shark slurpee machine"), not prose in one goal |
+| `cs-gap-idea-bank` | "worth targeting next year" — neither a dated proposal nor a lesson |
+| `cs-gap-config-asof` | reading a past review against the settings in force then |
+
+Plus `cs-gap-docs-page`, because `/docs` was still the template's and told the
+reader the database was D1.
+
+- **`cs-gap-route-watch` — built, in `review`.** `route` is an entity kind with
+  its own `routes` kind table and `ROUTE_STATUSES`; `attrsKey("route")` keys on
+  `origin|destination|carrier` with **no date**, so two sites reporting one
+  announcement collapse to one entity while a dated fare on the same city pair
+  stays a separate `flight`. Migration `drizzle-pg/0003_thick_warhawk.sql`
+  applied and read back: `entity_kind` lists `route`, `routes` has 8 columns, 4
+  migrations in the ledger. `pnpm run selfcheck` is 20 files green including the
+  new `selfcheck-route-watch.mjs` (11 checks), and it was proven able to fail
+  twice — folding `service_starts_on` into the key, and a first-three-letters
+  `airportCode` that turned "Taipei" into "TAI".
+- **A flight finding used to lose its city pair.** `findingToSighting` passed
+  only `departOn`, so `attrsKey("flight")` returned null and every browser-found
+  fare deduped by URL — two sellers of one itinerary became two entities. It now
+  passes `origin`, `destination`, `carrier` and `nonstop` for both kinds, and the
+  browse prompt asks for IATA codes.
+- **`cs-gap-docs-page` — built, in `review`.** Six pages under
+  `pages/docs/`: `/docs`, `/docs/original-goals`, `/docs/model`,
+  `/docs/agent-loop`, `/docs/surfaces`, `/docs/roadmap`, plus
+  `components/docs/` (ReUI `Frame`, `Badge`, `CodeBlock`, tokens only) and a
+  Documentation nav group in `lib/config.ts`. `/docs/model` **imports** the enum
+  lists from `@/shared/contracts`, so a rename cannot leave the page stale.
+  Three things left open and recorded in that task's worklog: the ER diagram is
+  Mermaid **source** in a `CodeBlock` because no `mermaid` package is installed;
+  the 2026-10-07 decision record says D1 keeps sessions and **there is no
+  sessions table** (correct the record, not the page); and retention reads
+  "meant to be purged" because `cs-be-7-1`'s cron does not exist.
+- **The four other gaps are filed, not built**, because none is observable on its
+  own: the occasion calendar needs the BE-7 cron's due-goal computation, and the
+  wishlist, the idea bank and config history each need `cs-be-1-6` config tables
+  plus the `cs-be-2-8` config API. Shipping a table nothing reads would read as
+  progress and be none.
+- **`067a29e7ed5b` goals findings count — fixed, in `review`.** `goals.ts` now
+  has its own `qualified()` and both correlated subselects reference
+  `"goals"."id"`. New `pnpm run verify:goal-counts` drives the real list query
+  (now exported as `listGoals()`) against real Postgres with rows in a
+  rolled-back transaction: two goals with different counts, three sightings of
+  two entities, a goal with none, and a sighting with a null `goal_id`.
+  Restoring the bug turned it red on `findings_count`, and `runs_count` stayed
+  green — proof of the note in that task that `runs_count` was right only
+  because `run_goals` has no `id` column. It is qualified now too.
+- **The tokens SDK is intermittently flaky from a bare `node` run here.**
+  `requireSecret("CORE_SHOPPING_PG_OWNER_PASSWORD")` threw "not found" twice
+  while `tokens show` answered fine in the same shell, and worked under
+  `pnpm exec node`. Pass the value in from the shell rather than debugging it.
+  A direct `pg` client to 192.168.1.50 also needs `ssl: { rejectUnauthorized:
+  false }`, same as `drizzle.pg.config.ts`, or it fails in `ClientAuthentication`.
 
 ## This session (2026-10-15, fourth)
 

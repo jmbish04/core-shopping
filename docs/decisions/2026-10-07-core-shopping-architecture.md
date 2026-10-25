@@ -25,7 +25,7 @@ shared resource (Secret Store slots: the store is near its 100 cap).
    1. `SPOTIFY_CLIENT_ID` + `SPOTIFY_CLIENT_SECRET` in the store; refresh token encrypted in Postgres. **(recommended)**
    2. Skip Spotify; enter taste manually.
 3. **What happens to D1?**
-   1. Domain data only in Postgres; D1 keeps sessions and mirrored logs; template demo pages and tables removed. **(recommended)**
+   1. Domain data only in Postgres; D1 keeps sessions and mirrored logs; template demo pages and tables removed. **(recommended)** — *corrected 2026-10-25: see the note under Decision.*
    2. Keep the template demo surfaces alongside.
 4. **App shell.**
    1. Keep the installed `app-shell-2` (repo standard). **(recommended)**
@@ -56,3 +56,17 @@ Justin, 2026-10-07:
 Added in the same answer: a service binding to the dopamine Worker so critical finds print a
 receipt on the Epson printer; its barcode opens `/notifications/{id}` in core-shopping
 (epics `cs-be-8`, `cs-fe-12`).
+
+## Correction, 2026-10-25
+
+**D1 does not keep sessions.** Decision 3 above says it does, and it never did: there is
+no `sessions` table anywhere in `db/schemas/`, and sign-in is a stateless signed cookie
+whose token is an HMAC over its own expiry (`src/backend/auth.ts`). Rotating the key signs
+every device out, which is the whole point of having no table.
+
+What D1 actually holds: the template's `/lab` demo data (projects, tasks, notes, chat
+threads, the drive's file tree, inbound mail) and the health-check history. Domain data is
+Postgres, as decided.
+
+Found while writing the `/docs` pages, which were deliberately written to say only what is
+checkable in the code — so they describe D1 correctly and this record was the wrong half.

@@ -10,6 +10,7 @@ import {
   ENTITY_KINDS,
   GOAL_CATEGORIES,
   GOAL_STATUSES,
+  ROUTE_STATUSES,
   RUN_EVENT_LEVELS,
   RUN_STATUSES,
   SOURCE_KINDS,
@@ -27,3 +28,4 @@ export const entityKind = pgEnum("entity_kind", ENTITY_KINDS);
 export const sourceKind = pgEnum("source_kind", SOURCE_KINDS);
 export const performerType = pgEnum("performer_type", ["artist", "comedian", "band", "other"]);
 export const cabinClass = pgEnum("cabin_class", ["economy", "premium_economy", "business", "first"]);
+export const routeStatus = pgEnum("route_status", ROUTE_STATUSES);

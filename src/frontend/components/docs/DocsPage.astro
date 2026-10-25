@@ -1,0 +1,49 @@
+---
+/**
+ * Shell for every documentation page: the shared layout, the page toolbar and
+ * a sub-navigation read from `docsPages` in `@/lib/config` (the one route
+ * list), so adding a docs page is one entry there plus one file.
+ *
+ * RESPONSIVE STRATEGY
+ * desktop: toolbar, sub-navigation as a wrapping row, then one Frame per topic.
+ * mobile (390px): the sub-navigation wraps onto several rows; Frames stack and
+ * row grids collapse to label-over-text; code scrolls inside its Frame.
+ * vehicle: same as mobile; reading-only pages, every link a full-height tap target.
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { docsPages } from "@/lib/config";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, "") || "/";
+---
+
+<BaseLayout title={title === "Documentation" ? title : `${title} | Documentation`} description={description}>
+  <PageBody>
+    <PageToolbar title={title} description={description} />
+    <nav aria-label="Documentation pages" class="flex flex-wrap gap-1">
+      {
+        docsPages.map((page) => (
+          <a
+            href={page.href}
+            aria-current={path === page.href ? "page" : undefined}
+            class:list={[
+              "inline-flex h-8 items-center rounded-md px-3 text-sm font-medium transition-colors",
+              path === page.href
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+            ]}
+          >
+            {page.label}
+          </a>
+        ))
+      }
+    </nav>
+    <slot />
+  </PageBody>
+</BaseLayout>

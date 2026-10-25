@@ -87,7 +87,7 @@ export function buildBrowsePrompt(goal: BrowseGoal, criteria: BrowseCriterion[])
   if (goal.instructions.trim()) lines.push(`Instructions: ${goal.instructions.trim()}`);
   if (goal.systemPrompt.trim()) lines.push(`Context: ${goal.systemPrompt.trim()}`);
   lines.push(
-    "Finish with one JSON object on the last line: {\"findings\":[{\"kind\",\"title\",\"url\",\"price\",\"currency\",\"seller\",\"venue\",\"city\",\"dates\",\"notes\"}]}. kind is one of event, product, flight, hotel, experience. dates is YYYY-MM-DD or an ISO datetime. Use null for a field you did not see.",
+    "Finish with one JSON object on the last line: {\"findings\":[{\"kind\",\"title\",\"url\",\"price\",\"currency\",\"seller\",\"venue\",\"city\",\"dates\",\"notes\",\"origin\",\"destination\",\"carrier\",\"nonstop\",\"service_starts_on\",\"seat_product\"}]}. kind is one of event, product, flight, route, hotel, experience. Use route for a newly announced service with no fare yet, and flight for a dated priced itinerary. origin and destination are IATA codes. dates and service_starts_on are YYYY-MM-DD or an ISO datetime. Use null for a field you did not see.",
   );
   const prompt = lines.join("\n");
   if (prompt.length <= BROWSE_PROMPT_MAX_CHARS) return prompt;

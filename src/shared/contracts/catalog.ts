@@ -18,6 +18,12 @@ export const ENTITY_KINDS = [
   "venue",
   "product",
   "flight",
+  /**
+   * A scheduled service between two airports, with no dates: "STARLUX will fly
+   * SFO-TPE nonstop". A `flight` is a dated, priced itinerary on such a route,
+   * so the two dedupe differently and must not share a kind (cs-gap-route-watch).
+   */
+  "route",
   "hotel",
   "experience",
   "destination",
@@ -26,7 +32,14 @@ export const ENTITY_KINDS = [
 export const SOURCE_KINDS = ["web", "email", "api", "reddit", "review_site", "other"] as const;
 export const VERDICTS = ["strong_no", "no", "somewhat", "strong_yes"] as const;
 
+/**
+ * Where a route is in its life. `announced` is the one the brief asks to watch
+ * — the news that a nonstop is coming, months before a fare exists.
+ */
+export const ROUTE_STATUSES = ["announced", "scheduled", "flying", "discontinued"] as const;
+
 export const EntityKindSchema = z.enum(ENTITY_KINDS).meta({ id: "EntityKind" });
+export const RouteStatusSchema = z.enum(ROUTE_STATUSES).meta({ id: "RouteStatus" });
 
 export const ImageRefSchema = z
   .object({

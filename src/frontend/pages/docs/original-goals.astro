@@ -1,0 +1,135 @@
+---
+/**
+ * Original goals: the substance of the brief that started the project,
+ * organised. The brief itself is kept verbatim in `docs/original-brief.md`;
+ * this page restates it in plain prose and never quotes it at length.
+ *
+ * The category badges use the real `GOAL_CATEGORIES` vocabulary. Which
+ * category an area of the brief falls under is a reading of the brief, not
+ * something the brief states.
+ */
+import DocsPage from "@/components/docs/DocsPage.astro";
+import DocRows from "@/components/docs/DocRows.astro";
+import DocSection from "@/components/docs/DocSection.astro";
+import type { DocRow } from "@/components/docs/types";
+import type { GOAL_CATEGORIES } from "@/shared/contracts";
+
+// `tag` is typed to the real vocabulary, so a renamed category fails typecheck.
+const watched: (DocRow & { tag: (typeof GOAL_CATEGORIES)[number] })[] = [
+  {
+    term: "Local experiences",
+    tag: "experience",
+    body: "Concerts and comedy nearby, inside a price range and a genre list, with favourite artists and comedians called out. Also tours that skip your city but stop in Los Angeles or Las Vegas, and small rising acts playing cheaply. City events such as restaurant week and festival line-ups, and shows in Tahoe, Napa, Los Angeles and Las Vegas.",
+  },
+  {
+    term: "Asia travel",
+    tag: "travel",
+    body: "Good seasons and festivals to travel for, such as cherry blossom or Pride in Taiwan, and a favourite artist on tour. Anywhere in Asia counts, with a trip of one to three legs. A Singapore stop is a recurring need, because it is a home visit.",
+  },
+  {
+    term: "Flight routes and award fares",
+    tag: "travel",
+    body: "New direct routes and cheaper fares out of SFO, OAK and SJC, including Hawaii and Asia. Deals on Singapore Airlines and newer celebrated carriers such as STARLUX, and distinctive cabins such as JetBlue Mint suites. Business class bought with points transferred from a card is the dream case.",
+  },
+  {
+    term: "Products and gifts",
+    tag: "product",
+    body: "Wedding, anniversary and holiday gifts, and technical purchases such as an AI workstation that meets every requirement without breaking the bank.",
+  },
+  {
+    term: "Sales and wish list",
+    tag: "deal",
+    body: "Anticipating sales such as Prime Day and pulling the most valuable and fun gifts out of the noise, including things already on a wish list.",
+  },
+  {
+    term: "Reviews and tips",
+    tag: "research",
+    body: "Real-world reviews of products, destinations and airlines, gathered on every task whatever the agent was sent to find. Reddit and other reputable sources supply tips for each part of a trip.",
+  },
+];
+
+const gates = [
+  { term: "1. A decent flight", body: "Business class on points for at least one leg is the aim. Economy plus is acceptable." },
+  { term: "2. Something special in the timing", body: "A festival, Pride, a season, or a favourite artist on tour." },
+  { term: "3. Enough notice", body: "Far enough ahead to ask for time off and be away for two to three weeks." },
+  { term: "4. A clear calendar", body: "Nothing else planned in the window, and enough time since the last trip or time off that taking more is reasonable." },
+  { term: "5. Real return on the trip", body: "The agent must be able to build an itinerary that earns the trip. A special season is a plus, not a justification." },
+  { term: "6. Respectable hotels", body: "Clean, safe and close to public transport. Not luxury, and nothing that adds stress. The standard to avoid is a stay with insects in the bedding." },
+  { term: "7. A balanced shape", body: "One to three legs. Flights of 12 to 16 hours need several days to adjust, so a trip lasts at least a week and a half. Each leg is 2 to 3 days, and 4 to 5 in Singapore." },
+  { term: "8. Something good in every leg", body: "A special experience, ideally some luxury shopping (a tax refund on the goods is a bonus), excellent food, and local scenery or attractions." },
+];
+
+const package_ = [
+  { term: "Flight options", body: "With and without points, on several airlines, nonstop or not, each with the path for moving points to the airline." },
+  { term: "Hotel options", body: "Options for the hotel, each with the reason it would suit: clean, safe, near transit." },
+  { term: "Day-by-day itinerary", body: "What time to wake, the plan, which transport to take and why, and the time to leave for each hop, so almost no planning remains." },
+  { term: "Meals from real reviews", body: "Breakfast, lunch and dinner chosen from user reviews." },
+  { term: "Tips from reputable sources", body: "What to pack for cold or rain, and small detours people wish they had made." },
+  { term: "Rest", body: "Slots for a couples massage, a spa or a nap, especially before a big evening, and days where sleeping in carries no guilt." },
+  { term: "Forks", body: "A few pre-selected alternatives for choosing your own adventure, so the choice is fun and not work." },
+  { term: "Calendar fit", body: "Conflicts in the window, days since the last trip, and workdays off needed." },
+];
+
+const memory = [
+  { term: "Every session is recorded", body: "What each agent did and found goes in the database, so relationships between finds can be discovered and ideas for future travel can be stored." },
+  { term: "Nothing is new twice", body: "The same email or website URL seen again is flagged and deduplicated, not re-announced." },
+  { term: "Products carry facts", body: "Brand, model, key stats, a picture, whether it was on sale and the original list price." },
+  { term: "Rules are configured, not coded", body: "Hotel brands you like, loyalty balances for hotels and airlines, and the date ranges where travel is ideal or frowned upon. Dates between the two are chances to argue that the return is there." },
+  { term: "Review sees the settings of the day", body: "A review package is judged against the settings that applied when it was made." },
+  { term: "Always check", body: "The calendar before proposing anything, and Reddit and other reputable sources for reviews and tips." },
+];
+---
+
+<DocsPage
+  title="Original goals"
+  description="The substance of the brief that started the project, organised. The full text is kept verbatim in the repository."
+>
+  <DocSection title="What was asked for">
+    <p>
+      The project began as one long brief: personal shoppers that work on a schedule, each aimed at what is needed in
+      the moment. The aim is more spontaneity, and less of the planning stress that stops anything happening. This page restates that
+      brief. The original wording is kept, untidied, in <code>docs/original-brief.md</code>, and it is what every
+      plan and task is measured against.
+    </p>
+    <p>
+      Two more pieces were requested alongside the shopping itself. Agents should see their own history, so they get
+      smarter. And a person reviews what an agent prepares, with the settings of that time in view.
+    </p>
+  </DocSection>
+
+  <DocSection title="What the agents watch" description="The badge is the goal category each area fits under." flush>
+    <DocRows rows={watched} />
+  </DocSection>
+
+  <DocSection
+    title="Hard gates for a travel proposal"
+    description="A trip is proposed only when it clears all eight. Gate 4 is recorded on every trip as a calendar check."
+    flush
+  >
+    <DocRows rows={gates} />
+  </DocSection>
+
+  <DocSection
+    title="What a finished package contains"
+    description="The package is the product. Everything here exists so the only work left is to decide."
+    flush
+  >
+    <DocRows rows={package_} />
+  </DocSection>
+
+  <DocSection
+    title="What the system must remember"
+    description="The brief asks for a Postgres database, so there is room for embeddings and for connecting finds to each other."
+    flush
+  >
+    <DocRows rows={memory} />
+  </DocSection>
+
+  <DocSection title="Where the brief goes further than the plan">
+    <p>
+      An audit of the plans against the brief found five requests with no home in the data model: watching for new
+      route announcements, a calendar of occasions and sales, a wish list, a bank of dateless ideas for next year, and a
+      history of settings. They are filed as tasks and listed on <a href="/docs/roadmap">Not built yet</a>.
+    </p>
+  </DocSection>
+</DocsPage>

@@ -1,0 +1,140 @@
+---
+/**
+ * The agent loop: briefing, run, sighting, dedupe, proposal, review, lesson.
+ *
+ * Status badges say what exists today. They were checked against the routers
+ * mounted in `src/backend/api/index.ts` and against `src/backend/**` on
+ * 2026-10-17; re-check them when a step lands.
+ */
+import DocsPage from "@/components/docs/DocsPage.astro";
+import DocRows from "@/components/docs/DocRows.astro";
+import DocSection from "@/components/docs/DocSection.astro";
+import type { DocRow } from "@/components/docs/types";
+import { ALERT_TRIGGERS, PROPOSAL_STATUSES } from "@/shared/contracts";
+
+const steps: DocRow[] = [
+  {
+    term: "1. Briefing",
+    status: "partial",
+    body: "An agent needs its goals, the lessons that apply, the most similar past reviews, open proposals and the settings in force. The planned briefing returns all of that in one call. Today a browser run builds its prompt from the goal alone: budget, dates, criteria, break rules and instructions.",
+  },
+  {
+    term: "2. Run",
+    status: "partial",
+    body: "A run records one session and its trace. Browser runs are built and tracked end to end. A run from any other client has no way to start yet, because starting, logging and finishing a run belong to the MCP server.",
+  },
+  {
+    term: "3. Sighting",
+    status: "built",
+    body: "Each thing an agent sees is recorded with its URL, price, list price, sale flag, points price, and the agent's own score and rationale.",
+  },
+  {
+    term: "4. Dedupe answer",
+    status: "built",
+    body: "Recording a sighting answers four questions. Is it new or a re-sighting? How many times has it been seen? How has the price moved since the last priced sighting? What became of earlier proposals for it, with their verdicts and reasons? Matching is by fingerprint, then by canonical URL. Matching by embedding similarity is not built.",
+  },
+  {
+    term: "5. Surfacing policy",
+    status: "planned",
+    body: "The server should decide whether a proposal is queued or filed silently. A re-sighting of something already decided is stored as a silent update and not re-queued. It resurfaces only if the price drops, the dates change, availability changes, or the reason it was declined no longer holds. The statuses and the contract exist; the policy code does not.",
+  },
+  {
+    term: "6. Proposal",
+    status: "planned",
+    body: "The agent submits an item or a full trip package. The tables and contracts exist. No route creates or reads a proposal yet.",
+  },
+  {
+    term: "7. Human review",
+    status: "planned",
+    body: "A card swipe carries a verdict with strength, one or more reason codes and an optional note. Strength matters: \"I would go if it were cheaper\" and \"never this venue\" must not look alike. The Review page is a placeholder.",
+  },
+  {
+    term: "8. Lesson",
+    status: "planned",
+    body: "A daily job turns reviews into proposed lessons with evidence. Nothing becomes active until a person accepts it, so no agent can change what agents are told by itself.",
+  },
+  {
+    term: "9. Critical alert",
+    status: "planned",
+    body: "A rare find prints a receipt through the dopamine Worker, and its barcode opens the notification here. Triggers are a fixed set, and there is no daily digest.",
+  },
+];
+
+const endpointRows: DocRow[] = [
+  { term: "GET /api/goals", mono: true, status: "built", body: "List goals with search, the ReUI filter tree, grouping, sorting and paging." },
+  { term: "POST /api/goals", mono: true, status: "built", body: "Create a goal with its criteria. Writes the first revision." },
+  { term: "GET, PATCH /api/goals/{id}", mono: true, status: "built", body: "Read a goal, or change it with a reason. Every change writes a revision." },
+  { term: "POST /api/goals/{id}/pause, /resume", mono: true, status: "built", body: "Pause or resume a goal." },
+  { term: "GET /api/goals/{id}/revisions", mono: true, status: "built", body: "A goal's revision history, newest first." },
+  { term: "GET /api/goals/{id}/stats", mono: true, status: "built", body: "Daily quality, uniqueness, findings and review counts for a goal, with no gaps." },
+  { term: "POST /api/goals/{id}/browse", mono: true, status: "built", body: "Start a browser run: one core-browser job built from the goal. Refused if the goal is not active, a browser run for it is still running, the daily cap is reached, or core-browser's cost guard is tripped." },
+  { term: "GET /api/runs, /api/runs/{id}", mono: true, status: "built", body: "The run queue, and one run with its trace, tool calls, goals, sightings and proposals." },
+  { term: "POST /api/runs/{id}/sync", mono: true, status: "built", body: "Copy a browser run's new job events into its trace. When the job has succeeded, record its findings as sightings. Spends nothing." },
+  { term: "POST /api/sightings", mono: true, status: "built", body: "Record a sighting and receive the dedupe answer." },
+  { term: "GET /api/dashboard/overview", mono: true, status: "built", body: "Everything the Overview page shows, in one payload." },
+  { term: "GET /api/health, POST /api/health/run", mono: true, status: "built", body: "The latest health verdict, and an on-demand run of the checks against live dependencies." },
+];
+
+const mcpRows: DocRow[] = [
+  { term: "search, execute", mono: true, status: "planned", body: "A code-mode server at /mcp over this API, so agents discover operations instead of carrying a long list of tool definitions. The auth gate already covers /mcp. No server answers there yet." },
+  { term: "briefing", mono: true, status: "planned", body: "Goals, ranked lessons, similar past reviews, proposals digest, settings snapshot, and the agent playbook, in one call." },
+  { term: "start_run, log_event, finish_run", mono: true, status: "planned", body: "The run lifecycle for clients other than the browser. Every call writes an audit row." },
+  { term: "propose", mono: true, status: "planned", body: "Submit an item or a trip package. The server applies the surfacing policy and says whether it was queued or filed silently, and why." },
+  { term: "similar_reviews, lessons_for, stances", mono: true, status: "planned", body: "Let an agent ground a pitch in past swipes before proposing." },
+  { term: "flag_critical", mono: true, status: "planned", body: "Raise a critical alert." },
+];
+---
+
+<DocsPage
+  title="Agent loop"
+  description="How a find becomes a decision, and a decision becomes something every later agent knows."
+>
+  <DocSection title="The loop in one paragraph">
+    <p>
+      An agent reads its brief, runs, and records what it sees. Each sighting is matched to what has been seen before,
+      and the agent learns whether it is new. If the find clears the bar, the agent proposes it. You review the
+      proposal and give a verdict with reasons. Those reasons become lessons, and the next brief carries them.
+    </p>
+    <p>
+      The first half of that loop is built for browser runs. The second half, from proposal onward, has its tables and
+      contracts but no routes or screens yet.
+    </p>
+  </DocSection>
+
+  <DocSection title="Step by step" description="What each step does and whether it exists today." flush>
+    <DocRows rows={steps} />
+  </DocSection>
+
+  <DocSection
+    title="Two rules the loop enforces by design"
+    description="They exist because the alternative quietly stops the loop working."
+  >
+    <ul>
+      <li>
+        <strong>Quiet by default.</strong> A proposal can be filed as <code>silent_update</code> and chained to the one
+        it follows. The price history grows, and you are not asked again. The proposal statuses are {PROPOSAL_STATUSES.join(", ")}.
+      </li>
+      <li>
+        <strong>Agents propose, people decide.</strong> A lesson stays <code>proposed</code> until a person accepts
+        it. An alert fires on a fixed set of triggers ({ALERT_TRIGGERS.join(", ")}) and records the rule that stopped a
+        print when it did not print.
+      </li>
+    </ul>
+  </DocSection>
+
+  <DocSection
+    title="Endpoints that exist"
+    description="Mounted in the Worker today. The same operations are described in the OpenAPI document."
+    flush
+  >
+    <DocRows rows={endpointRows} />
+  </DocSection>
+
+  <DocSection
+    title="MCP operations that do not exist yet"
+    description="Planned for the server at /mcp. Until it lands, agents other than browser runs have no door in."
+    flush
+  >
+    <DocRows rows={mcpRows} />
+  </DocSection>
+</DocsPage>

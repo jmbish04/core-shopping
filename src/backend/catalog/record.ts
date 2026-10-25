@@ -30,6 +30,7 @@ import {
   flights,
   hotels,
   products,
+  routes,
   sources,
 } from "@/backend/pg/schemas/catalog/entities";
 import { priceObservations, sightings } from "@/backend/pg/schemas/catalog/sightings";
@@ -116,6 +117,19 @@ async function insertKindRow(
         carrier: h.carrier ?? "",
         departOn: dayOf(h.departOn) || null,
         returnOn: dayOf(h.returnOn) || null,
+      })
+      .onConflictDoNothing();
+  } else if (kind === "route" && h.origin && h.destination) {
+    await tx
+      .insert(routes)
+      .values({
+        entityId,
+        origin: h.origin.toUpperCase(),
+        destination: h.destination.toUpperCase(),
+        carrier: h.carrier ?? "",
+        nonstop: h.nonstop ?? null,
+        serviceStartsOn: dayOf(h.serviceStartsOn) || null,
+        seatProduct: h.seatProduct ?? "",
       })
       .onConflictDoNothing();
   } else if (kind === "hotel" && (h.propertyName || h.title)) {

@@ -75,6 +75,19 @@ export const chatSurfaces: Array<NavChild & { block: string }> = [
   { href: "/lab/chat/support", label: "Docs support", block: "ai-chat-12", description: "Answers only from the knowledge base, showing what it read." },
 ];
 
+/**
+ * The documentation pages. One list, read by the rail, the ⌘K palette, the
+ * header title and the docs pages' own sub-navigation (`DocsPage.astro`).
+ */
+export const docsPages: NavChild[] = [
+  { href: "/docs", label: "Overview", description: "What core-shopping is, why it exists, and where to start." },
+  { href: "/docs/original-goals", label: "Original goals", description: "What the project was asked to do, organised." },
+  { href: "/docs/model", label: "Domain model", description: "Goals, runs, findings, proposals, trips, reviews and lessons." },
+  { href: "/docs/agent-loop", label: "Agent loop", description: "Briefing, run, sighting, dedupe, proposal, review, lesson." },
+  { href: "/docs/surfaces", label: "Surfaces and API", description: "Every route in the interface and the API behind it." },
+  { href: "/docs/roadmap", label: "Not built yet", description: "What the plans still hold, grouped by epic." },
+];
+
 export const navGroups: NavGroup[] = [
   {
     label: "Shopper",
@@ -92,6 +105,10 @@ export const navGroups: NavGroup[] = [
   {
     label: "Settings",
     items: [{ href: "/settings", label: "Settings", icon: SettingsIcon }],
+  },
+  {
+    label: "Documentation",
+    items: [{ href: "/docs", label: "Docs", icon: BookOpenIcon, children: docsPages }],
   },
   {
     label: "Lab",
@@ -185,6 +202,8 @@ export function allNavEntries(): Array<{ href: string; label: string; section?: 
       }
     }
   }
-  for (const d of devLinks) out.push({ href: d.href, label: d.label, section: "Developer" });
+  // `/docs` is both a rail group and a dev link; list each href once.
+  const seen = new Set(out.map((e) => e.href));
+  for (const d of devLinks) if (!seen.has(d.href)) out.push({ href: d.href, label: d.label, section: "Developer" });
   return out;
 }

@@ -191,6 +191,10 @@ export interface EntityHints {
   departOn?: string | null;
   returnOn?: string | null;
   propertyName?: string | null;
+  nonstop?: boolean | null;
+  /** A route's first day of service, when the announcement gives one. */
+  serviceStartsOn?: string | null;
+  seatProduct?: string | null;
 }
 
 /** How strong a fingerprint is. */
@@ -218,6 +222,13 @@ function attrsKey(kind: string, h: EntityHints): string | null {
       return o && d && out
         ? `${o}-${d}|${out}|${dayOf(h.returnOn)}|${n(h.carrier)}|${n(h.cabin)}`
         : null;
+    }
+    case "route": {
+      // No date, deliberately: an announcement is the same service however many
+      // sites report it, and whatever first-service date each one quotes.
+      const o = n(h.origin).replace(/ /g, "").toUpperCase();
+      const d = n(h.destination).replace(/ /g, "").toUpperCase();
+      return o && d ? `${o}-${d}|${n(h.carrier)}` : null;
     }
     case "product": {
       const brand = n(h.brand);

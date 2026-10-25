@@ -10,7 +10,8 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { desc, eq, or, sql, type SQL } from "drizzle-orm";
+import { desc, eq, getTableName, or, sql, type SQL } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 import { ListQueryError, runList, type ColumnMap } from "@/backend/api/list/index";
 import { withPg, type PgDb } from "@/backend/pg/client";
@@ -297,8 +298,24 @@ const nextExpectedAt = sql<Date | null>`case
   else ${goals.lastRunAt} + (${goals.expectedCadenceHours} * interval '1 hour')
 end`;
 const stale = sql<boolean>`coalesce((${nextExpectedAt}) < now(), false)`;
-const runsCount = sql<number>`(select count(*)::int from ${runGoals} where ${runGoals.goalId} = ${goals.id})`;
-const findingsCount = sql<number>`(select count(distinct ${sightings.entityId})::int from ${sightings} where ${sightings.goalId} = ${goals.id})`;
+/**
+ * A column as `"table"."column"`, for a reference to the OUTER query from
+ * inside a correlated subselect.
+ *
+ * Drizzle writes a bare `"id"` for a column of the subselect's own single
+ * table, so `${goals.id}` inside `select ... from sightings` binds to
+ * `sightings.id` and the predicate compares a goal id with a sighting id. That
+ * is the defect this fixes (maestro `067a29e7ed5b`); the same shape was fixed
+ * in the run detail in PR #13, where `qualified()` already lives in `runs.ts`.
+ */
+function qualified(column: AnyPgColumn): SQL {
+  return sql`${sql.identifier(getTableName(column.table))}.${sql.identifier(column.name)}`;
+}
+
+const outerGoalId = qualified(goals.id);
+
+const runsCount = sql<number>`(select count(*)::int from ${runGoals} where ${runGoals.goalId} = ${outerGoalId})`;
+const findingsCount = sql<number>`(select count(distinct ${sightings.entityId})::int from ${sightings} where ${sightings.goalId} = ${outerGoalId})`;
 // ponytail: cs-be-1-5 will replace this literal with reviewed positive verdicts / all reviewed proposals.
 const acceptRate = sql<number | null>`null::real`;
 
@@ -330,6 +347,49 @@ const goalListSelection = {
   accept_rate: acceptRate,
 };
 
+/**
+ * The goals list, exactly as `GET /api/goals` answers it.
+ *
+ * Exported so `pnpm run verify:goal-counts` can drive the real query against
+ * real Postgres: `runs_count` and `findings_count` are correlated subselects,
+ * and an empty table answers 0 whether the correlation is right or wrong.
+ *
+ * @param db - A Drizzle client from `withPg`.
+ * @param query - A parsed {@link ListQuerySchema}.
+ * @returns The list envelope with dates as ISO strings and counts as numbers.
+ * @throws {ListQueryError} When the query names a field the list does not have.
+ * @example
+ * const page = await listGoals(db, ListQuerySchema.parse({ page_size: 10 }));
+ */
+export async function listGoals(
+  db: PgDb,
+  query: z.infer<typeof ListQuerySchema>,
+): Promise<Record<string, unknown>> {
+  const result = await runList<Record<string, unknown>, typeof GOAL_LIST_FIELDS>(db, {
+    fields: GOAL_LIST_FIELDS,
+    columns: goalListColumns,
+    query,
+    from: (selection) =>
+      db
+        .select(selection ?? goalListSelection)
+        .from(goals)
+        .$dynamic(),
+    fallback: desc(goals.updatedAt),
+    searchColumns: [goals.title],
+  });
+  return {
+    ...result,
+    items: result.items.map((item) => ({
+      ...item,
+      last_run_at: nullableIso(item.last_run_at as Date | string | null),
+      next_expected_at: nullableIso(item.next_expected_at as Date | string | null),
+      runs_count: Number(item.runs_count),
+      findings_count: Number(item.findings_count),
+      accept_rate: item.accept_rate == null ? null : Number(item.accept_rate),
+    })),
+  };
+}
+
 /** Goals API router. */
 export const goalsRouter = new OpenAPIHono<{ Bindings: Env }>();
 
@@ -355,31 +415,7 @@ goalsRouter.openapi(
   async (c) => {
     const query = c.req.valid("query");
     try {
-      const result = await withPg(c.env, (db) =>
-        runList<Record<string, unknown>, typeof GOAL_LIST_FIELDS>(db, {
-          fields: GOAL_LIST_FIELDS,
-          columns: goalListColumns,
-          query,
-          from: (selection) =>
-            db
-              .select(selection ?? goalListSelection)
-              .from(goals)
-              .$dynamic(),
-          fallback: desc(goals.updatedAt),
-          searchColumns: [goals.title],
-        }),
-      );
-      const normalized = {
-        ...result,
-        items: result.items.map((item) => ({
-          ...item,
-          last_run_at: nullableIso(item.last_run_at as Date | string | null),
-          next_expected_at: nullableIso(item.next_expected_at as Date | string | null),
-          runs_count: Number(item.runs_count),
-          findings_count: Number(item.findings_count),
-          accept_rate: item.accept_rate == null ? null : Number(item.accept_rate),
-        })),
-      };
+      const normalized = await withPg(c.env, (db) => listGoals(db, query));
       return c.json(goalListEnvelopeSchema.parse(normalized), 200);
     } catch (error) {
       if (error instanceof ListQueryError) {
