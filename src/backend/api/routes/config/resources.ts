@@ -23,6 +23,7 @@ import { loyaltyAccounts, loyaltyPrograms, transferPartners } from "@/backend/pg
 import { people, preferences } from "@/backend/pg/schemas/config/people";
 import { tasteArtists, tasteGenres, venueStances } from "@/backend/pg/schemas/config/taste";
 import { homeAirports, hotelBrandRules, travelWindows, tripHistory } from "@/backend/pg/schemas/config/travel";
+import { occasions } from "@/backend/pg/schemas/config/occasions";
 import { wishlistItems } from "@/backend/pg/schemas/config/wishlist";
 import {
   HOME_AIRPORT_LIST_FIELDS,
@@ -69,6 +70,10 @@ import {
   TripHistoryInputSchema,
   VENUE_STANCE_LIST_FIELDS,
   VenueStanceInputSchema,
+  OCCASION_LIST_FIELDS,
+  OccasionInputSchema,
+  OccasionPatchSchema,
+  OccasionSchema,
   WISHLIST_LIST_FIELDS,
   WishlistItemInputSchema,
   WishlistItemPatchSchema,
@@ -334,6 +339,27 @@ export const CONFIG_RESOURCE_SPECS: readonly ConfigResourceSpec[] = [
     /** Newest first: a briefing reads the most recently wanted things first. */
     fallback: desc(wishlistItems.addedAt),
     search: [wishlistItems.label, wishlistItems.notes],
+  },
+  {
+    resource: "occasions",
+    operation: "Occasions",
+    label: "occasions",
+    table: occasions,
+    input: OccasionInputSchema,
+    patch: OccasionPatchSchema,
+    row: OccasionSchema,
+    fields: OCCASION_LIST_FIELDS,
+    columns: {
+      label: occasions.label,
+      kind: occasions.kind,
+      starts_on: occasions.startsOn,
+      ends_on: occasions.endsOn,
+      lead_days: occasions.leadDays,
+      recurs_yearly: occasions.recursYearly,
+      is_active: occasions.isActive,
+    },
+    fallback: asc(occasions.startsOn),
+    search: [occasions.label, occasions.notes],
   },
 ];
 
