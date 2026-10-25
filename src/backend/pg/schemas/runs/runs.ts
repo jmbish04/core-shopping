@@ -10,6 +10,7 @@
 import { index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { agentClient, runEventLevel, runStatus, toolCallStatus } from "@/backend/pg/schemas/enums";
+import { configSnapshots } from "@/backend/pg/schemas/config/snapshots";
 import { goals } from "@/backend/pg/schemas/goals/goals";
 
 export const agentRuns = pgTable(
@@ -21,6 +22,14 @@ export const agentRuns = pgTable(
     status: runStatus("status").notNull().default("running"),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
+    /**
+     * The configuration this run read (maestro cs-gap-config-asof), so the
+     * run detail can show the settings it worked from rather than today's.
+     * `restrict` on delete for the same reason as on a proposal.
+     */
+    configSnapshotId: uuid("config_snapshot_id").references(() => configSnapshots.id, {
+      onDelete: "restrict",
+    }),
     summary: text("summary").notNull().default(""),
     qualityScore: real("quality_score"),
     uniquenessScore: real("uniqueness_score"),
@@ -30,7 +39,11 @@ export const agentRuns = pgTable(
     sessionUrl: text("session_url"),
     error: text("error"),
   },
-  (t) => [index("agent_runs_status_started_idx").on(t.status, t.startedAt), index("agent_runs_started_idx").on(t.startedAt)],
+  (t) => [
+    index("agent_runs_status_started_idx").on(t.status, t.startedAt),
+    index("agent_runs_started_idx").on(t.startedAt),
+    index("agent_runs_config_snapshot_idx").on(t.configSnapshotId),
+  ],
 );
 
 export const runGoals = pgTable(

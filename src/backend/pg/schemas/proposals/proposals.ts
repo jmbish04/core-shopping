@@ -13,6 +13,7 @@ import { index, integer, jsonb, pgTable, real, text, timestamp, uuid, type AnyPg
 
 import { proposalKind, proposalStatus } from "@/backend/pg/schemas/enums-m3";
 import { entities } from "@/backend/pg/schemas/catalog/entities";
+import { configSnapshots } from "@/backend/pg/schemas/config/snapshots";
 import { wishlistItems } from "@/backend/pg/schemas/config/wishlist";
 import { goals } from "@/backend/pg/schemas/goals/goals";
 import { agentRuns } from "@/backend/pg/schemas/runs/runs";
@@ -23,6 +24,15 @@ export const proposals = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     goalId: uuid("goal_id").references(() => goals.id, { onDelete: "set null" }),
     runId: uuid("run_id").references(() => agentRuns.id, { onDelete: "set null" }),
+    /**
+     * The configuration this proposal was built against (maestro
+     * cs-gap-config-asof). `restrict` on delete, not `set null`: a snapshot a
+     * proposal depends on must not be removable, because losing it is losing
+     * the only record of what the verdict was judged against.
+     */
+    configSnapshotId: uuid("config_snapshot_id").references(() => configSnapshots.id, {
+      onDelete: "restrict",
+    }),
     kind: proposalKind("kind").notNull().default("item"),
     status: proposalStatus("status").notNull().default("queued"),
     title: text("title").notNull(),
@@ -43,6 +53,7 @@ export const proposals = pgTable(
     // The review queue reads exactly this: queued, not snoozed, soonest expiry.
     index("proposals_status_created_idx").on(t.status, t.createdAt),
     index("proposals_goal_idx").on(t.goalId, t.createdAt),
+    index("proposals_config_snapshot_idx").on(t.configSnapshotId),
     index("proposals_prior_idx").on(t.priorProposalId),
     index("proposals_expires_idx").on(t.expiresAt),
   ],
