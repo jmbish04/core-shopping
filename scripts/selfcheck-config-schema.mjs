@@ -31,6 +31,16 @@
  * `src/shared/contracts/config.ts` has relative extensionless value imports
  * that plain Node cannot resolve. The behavioural half runs against real
  * Postgres in `pnpm run verify:trip-history`.
+ *
+ * **These assertions read the GENERATED MIGRATION, so on their own they cannot
+ * catch a regression in the schema source.** Measured 2026-10-25 by a peer
+ * session: changing `uniqueIndex(...).on(sql\`lower(brand)\`)` to `.on(brand)`
+ * in `schemas/config/travel.ts` left this file green at 13 of 13, because the
+ * committed SQL still said `lower("brand")`. `scripts/selfcheck-schema-drift.mjs`
+ * is the general guard — it fails whenever `drizzle-kit generate` would emit a
+ * new migration, which covers every table at once. The two checks below that
+ * name a specific claim also assert the schema source, so the claim is guarded
+ * even when read alone.
  */
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
@@ -159,6 +169,14 @@ check("a stance can be held about a country, and it expires", () => {
 });
 
 check("one household row per name, so a null person is not a licence to duplicate", () => {
+  // Asserted in the SCHEMA SOURCE too, not only the generated SQL: dropping
+  // `.nullsNotDistinct()` from the source leaves the committed migration
+  // correct and this check green until someone regenerates.
+  assert.equal(
+    (schemaSrc.match(/\.nullsNotDistinct\(\)/g) ?? []).length,
+    3,
+    "the three name+person keys must each call .nullsNotDistinct() in the schema",
+  );
   for (const key of [
     ["taste_artists_name_person_key", '"name","performer_type","for_person_id"'],
     ["taste_genres_name_person_key", '"name","for_person_id"'],
@@ -172,6 +190,13 @@ check("one household row per name, so a null person is not a licence to duplicat
 });
 
 check("a hotel brand holds one stance whatever its capitalisation", () => {
+  // The schema source, for the same reason as above. This is the exact
+  // regression a peer planted on 2026-10-25 that this file used to miss.
+  assert.match(
+    schemaSrc,
+    /uniqueIndex\("hotel_brand_rules_brand_key"\)\.on\(sql`lower\(\$\{t\.brand\}\)`\)/,
+    "the brand key must be built over lower(brand) in the schema, not just in the SQL",
+  );
   assert.match(
     migrationSql,
     /CREATE UNIQUE INDEX "hotel_brand_rules_brand_key" ON "hotel_brand_rules" USING btree \(lower\("brand"\)\)/,
