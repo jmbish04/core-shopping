@@ -27,7 +27,7 @@
  */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -44,8 +44,17 @@ assert.ok(before.length > 0, "drizzle-pg holds no migrations, so there is nothin
  * it just copied. The scratch directory therefore lives inside the repo, under
  * `node_modules/.cache` so git can never see it, and is passed as a relative
  * path.
+ *
+ * `node_modules/.cache` is created incidentally by a build tool, not by
+ * `pnpm install`, so a fresh clone or a new worktree that runs
+ * `pnpm run selfcheck` before a build — the normal order in CI — has no such
+ * directory. Without the mkdir this died with `ENOENT ... mkdtemp`, which is a
+ * crash rather than a verdict: a reader would see a broken check instead of
+ * "no drift". Measured by a peer session 2026-10-25, and masked here because
+ * this worktree had already run a build.
  */
 const cacheRoot = join(root, "node_modules", ".cache");
+mkdirSync(cacheRoot, { recursive: true });
 const scratch = mkdtempSync(join(cacheRoot, "cs-drift-"));
 const scratchRelative = relative(root, scratch);
 // The config must sit in the repo root so its relative schema path resolves.
