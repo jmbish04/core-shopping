@@ -558,6 +558,7 @@ export type VenueStance = z.infer<typeof VenueStanceSchema>;
  */
 export const WISHLIST_STATUSES = ["wanted", "acquired", "dropped"] as const;
 export const WishlistStatusSchema = z.enum(WISHLIST_STATUSES).meta({ id: "WishlistStatus" });
+export type WishlistStatus = (typeof WISHLIST_STATUSES)[number];
 
 /**
  * One requirement that disqualifies a find.

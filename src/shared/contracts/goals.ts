@@ -16,6 +16,7 @@ export const GOAL_STATUSES = ["active", "paused", "retired"] as const;
 export const AGENT_CLIENTS = ["claude", "gpt", "gemini", "browser", "other"] as const;
 
 export const GoalCategorySchema = z.enum(GOAL_CATEGORIES).meta({ id: "GoalCategory" });
+export type GoalCategory = (typeof GOAL_CATEGORIES)[number];
 export const GoalStatusSchema = z.enum(GOAL_STATUSES).meta({ id: "GoalStatus" });
 export const AgentClientSchema = z.enum(AGENT_CLIENTS).meta({ id: "AgentClient" });
 

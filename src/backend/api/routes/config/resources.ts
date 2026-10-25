@@ -23,6 +23,7 @@ import { loyaltyAccounts, loyaltyPrograms, transferPartners } from "@/backend/pg
 import { people, preferences } from "@/backend/pg/schemas/config/people";
 import { tasteArtists, tasteGenres, venueStances } from "@/backend/pg/schemas/config/taste";
 import { homeAirports, hotelBrandRules, travelWindows, tripHistory } from "@/backend/pg/schemas/config/travel";
+import { wishlistItems } from "@/backend/pg/schemas/config/wishlist";
 import {
   HOME_AIRPORT_LIST_FIELDS,
   HomeAirportPatchSchema,
@@ -68,6 +69,10 @@ import {
   TripHistoryInputSchema,
   VENUE_STANCE_LIST_FIELDS,
   VenueStanceInputSchema,
+  WISHLIST_LIST_FIELDS,
+  WishlistItemInputSchema,
+  WishlistItemPatchSchema,
+  WishlistItemSchema,
 } from "@/shared/contracts/config";
 import type { ListFields } from "@/shared/contracts/common";
 
@@ -308,6 +313,27 @@ export const CONFIG_RESOURCE_SPECS: readonly ConfigResourceSpec[] = [
     /** Newest first: the question asked of this table is always "most recent". */
     fallback: desc(tripHistory.endedOn),
     search: [tripHistory.label, tripHistory.destination, tripHistory.notes],
+  },
+  {
+    resource: "wishlist",
+    operation: "Wishlist",
+    label: "wishlist items",
+    table: wishlistItems,
+    input: WishlistItemInputSchema,
+    patch: WishlistItemPatchSchema,
+    row: WishlistItemSchema,
+    fields: WISHLIST_LIST_FIELDS,
+    columns: {
+      label: wishlistItems.label,
+      category: wishlistItems.category,
+      status: wishlistItems.status,
+      target_price_cents: wishlistItems.targetPriceCents,
+      msrp_cents: wishlistItems.msrpCents,
+      added_at: wishlistItems.addedAt,
+    },
+    /** Newest first: a briefing reads the most recently wanted things first. */
+    fallback: desc(wishlistItems.addedAt),
+    search: [wishlistItems.label, wishlistItems.notes],
   },
 ];
 
