@@ -364,4 +364,102 @@ check("the template's key/value config router kept its own routes under /api/lab
   assert.ok(lab.length > 0, "the template config router is not mounted anywhere");
 });
 
+// ---------------------------------------------------------------------------
+// Mounted is not the same as reachable.
+// ---------------------------------------------------------------------------
+//
+// **Measured 2026-10-26, on the deployed Worker, right after PRs #19 to #24
+// merged.** `GET /api/goals/due` — the "which goals are due before their
+// window" route from cs-gap-occasion-calendar — answered
+// `404 {"error":{"code":"goal_not_found"}}`. The handler was mounted. It was
+// in `/openapi.json`. It was unreachable, because `app.route("/api/goals",
+// goalsRouter)` registered `/{id}` first and Hono resolves overlapping
+// patterns in registration order, so `due` was read as a goal id.
+//
+// **Everything above this line passed while that was true**, and the reason is
+// worth keeping. The dispatch check asserts each new path answers "something
+// other than 404". With no bindings, the WRONG handler threw on its missing
+// Hyperdrive binding and answered 500 — which is not 404, so it read as a
+// pass. "Not 404" cannot tell "my handler ran" from "somebody else's handler
+// ran", which is the same mistake as asserting a path and a method instead of
+// a handler identity, one layer along.
+//
+// So this asserts the pattern that ANSWERS is the pattern that was
+// REGISTERED, for every route in the table, by asking Hono's own router
+// rather than reimplementing its precedence: a throwaway app is built with
+// the same patterns in the same order, each answering with its own index.
+const { Hono } = await import("hono");
+
+/** A concrete path for a pattern. Deliberately unlike any static segment. */
+const PROBE_SEGMENT = "zzprobezz";
+const concretePath = (pattern) =>
+  pattern.replace(/\{[^}]+\}/g, PROBE_SEGMENT).replace(/:[A-Za-z0-9_]+/g, PROBE_SEGMENT);
+
+/**
+ * Report every pattern whose own concrete path is answered by a different
+ * pattern, or by nothing.
+ *
+ * Compares the PATTERN, never the index: `OpenAPIHono` registers a validator
+ * middleware and a handler as separate entries for one route, so several
+ * entries share a path and a method legitimately. `ALL` entries are the
+ * global middleware (`cors`, `logger`), which do not terminate a request and
+ * would swallow every probe.
+ */
+async function shadowedIn(routeTable) {
+  const routes = routeTable.filter((route) => route.method !== "ALL");
+  const probe = new Hono();
+  routes.forEach((route, index) =>
+    probe.on(route.method, route.path, () => new Response(String(index))),
+  );
+  const out = [];
+  for (const route of routes) {
+    const answer = await probe.request(concretePath(route.path), { method: route.method });
+    const winner = answer.status === 404 ? null : routes[Number(await answer.text())];
+    if (winner?.path !== route.path) {
+      out.push(`${route.method} ${route.path} -> ${winner ? winner.path : "nothing (404)"}`);
+    }
+  }
+  return out;
+}
+
+await checkAsync(
+  `every one of the ${app.routes.filter((r) => r.method !== "ALL").length} registered routes is REACHABLE, not shadowed`,
+  async () => {
+    const shadowed = await shadowedIn(app.routes);
+    assert.deepEqual(
+      [...new Set(shadowed)],
+      [],
+      `${new Set(shadowed).size} route pattern(s) can never be reached:\n  ${[...new Set(shadowed)].join("\n  ")}`,
+    );
+  },
+);
+
+await checkAsync("THE CONTROL: the reachability probe really does catch shadowing", async () => {
+  /**
+   * The assertion above is a list being empty, which is exactly the shape
+   * that reads green when the instrument is broken. This feeds it the bug it
+   * exists to catch — a param registered before a static sibling — and
+   * asserts it is reported. Without this, a probe that silently matched
+   * nothing would pass forever.
+   *
+   * `:id`, not `{id}`: `OpenAPIHono` rewrites an OpenAPI `{id}` to Hono's
+   * `:id` when it registers, so `:id` is what the real table holds. Written
+   * with braces, Hono reads the segment as the literal text `{id}` and the
+   * control passes for the wrong reason — which is how this comment got here.
+   */
+  const shadowed = await shadowedIn([
+    { method: "GET", path: "/api/goals/:id", handler: () => {} },
+    { method: "GET", path: "/api/goals/due", handler: () => {} },
+  ]);
+  assert.deepEqual(shadowed, ["GET /api/goals/due -> /api/goals/:id"]);
+  // And the other order is clean, so it is not a check that calls everything shadowed.
+  assert.deepEqual(
+    await shadowedIn([
+      { method: "GET", path: "/api/goals/due", handler: () => {} },
+      { method: "GET", path: "/api/goals/:id", handler: () => {} },
+    ]),
+    [],
+  );
+});
+
 console.log(`selfcheck-route-mounts: ok (${passed} checks)`);
