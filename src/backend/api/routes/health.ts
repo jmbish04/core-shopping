@@ -24,7 +24,11 @@ import { withPg } from "@/backend/pg/client";
 import { ledgerVerdict, newestJournalWhen } from "@/backend/pg/ledger";
 import { coreBrowserStub, probeCoreBrowser } from "@/backend/browser";
 import { readAfterWriteProbe } from "@/backend/health/read-after-write";
-import pgJournal from "../../../../drizzle-pg/meta/_journal.json";
+// `with { type: "json" }` is required by Node's ESM loader and understood by
+// esbuild and wrangler. Without it this module cannot be imported outside the
+// bundler, which kept the whole Hono app unloadable in a plain-Node
+// self-check — see scripts/selfcheck-route-mounts.mjs.
+import pgJournal from "../../../../drizzle-pg/meta/_journal.json" with { type: "json" };
 
 // ---------------------------------------------------------------------------
 // HealthCoordinator
@@ -40,7 +44,19 @@ type CheckResult = {
 };
 
 class HealthCoordinator {
-  constructor(private readonly env: Env) {}
+  /**
+   * Written as an explicit field rather than a constructor parameter
+   * property. Node's strip-only TypeScript cannot compile
+   * `constructor(private readonly env: Env)`, and this file is on the import
+   * graph of `api/index.ts` — so that one construct made the whole Hono app
+   * unloadable in a plain-Node self-check, and `selfcheck-route-mounts.mjs`
+   * could not exist. Identical at runtime.
+   */
+  private readonly env: Env;
+
+  constructor(env: Env) {
+    this.env = env;
+  }
 
   // -----------------------------------------------------------------------
   // GET helpers
