@@ -550,9 +550,126 @@ export const VenueStanceSchema = VenueStanceInputSchema.extend({
 }).meta({ id: "VenueStance" });
 export type VenueStance = z.infer<typeof VenueStanceSchema>;
 
+
+// ---------------------------------------------------------------------------
+// PATCH schemas.
+//
+// A partial loses the cross-field rules (a minimum cannot be checked against a
+// maximum the request did not send), so a route must merge the patch onto the
+// stored row and re-validate with the FULL input schema. That is what
+// `routes/shopping/goals.ts` does, and these exist so a PATCH still reports a
+// field path for every unknown or malformed key.
+// ---------------------------------------------------------------------------
+
+export const PersonPatchSchema = PersonInputSchema.partial().meta({ id: "PersonPatch" });
+export const PreferencesPatchSchema = z.object(preferencesFields).partial().meta({ id: "PreferencesPatch" });
+export const HotelBrandRulePatchSchema = HotelBrandRuleInputSchema.partial().meta({ id: "HotelBrandRulePatch" });
+export const LoyaltyProgramPatchSchema = LoyaltyProgramInputSchema.partial().meta({ id: "LoyaltyProgramPatch" });
+export const LoyaltyAccountPatchSchema = z.object(loyaltyAccountFields).partial().meta({ id: "LoyaltyAccountPatch" });
+export const TransferPartnerPatchSchema = z.object(transferPartnerFields).partial().meta({ id: "TransferPartnerPatch" });
+export const TravelWindowPatchSchema = z.object(travelWindowFields).partial().meta({ id: "TravelWindowPatch" });
+export const HomeAirportPatchSchema = HomeAirportInputSchema.partial().meta({ id: "HomeAirportPatch" });
+export const TasteArtistPatchSchema = TasteArtistInputSchema.partial().meta({ id: "TasteArtistPatch" });
+export const TasteGenrePatchSchema = TasteGenreInputSchema.partial().meta({ id: "TasteGenrePatch" });
+export const VenueStancePatchSchema = VenueStanceInputSchema.partial().meta({ id: "VenueStancePatch" });
+export const TripHistoryPatchSchema = z.object(tripHistoryFields).partial().meta({ id: "TripHistoryPatch" });
+
+/**
+ * How a bulk save treats rows the request did not mention.
+ *
+ * `upsert` is the default and leaves them alone. `replace` DELETES them, which
+ * is what a settings grid showing the whole list means by "save", and is
+ * destructive if a client sends a partial list — so it has to be asked for by
+ * name rather than being what happens when the field is left out.
+ */
+export const BULK_SAVE_MODES = ["upsert", "replace"] as const;
+export const BulkSaveModeSchema = z.enum(BULK_SAVE_MODES).default("upsert").meta({ id: "BulkSaveMode" });
+
+/** One resource's bulk save. An item with an `id` is an update. */
+export function bulkSaveBody<T extends z.ZodType>(item: T) {
+  return z.object({
+    mode: BulkSaveModeSchema,
+    items: z.array(z.object({ id: Id.optional() }).and(item)).max(500),
+  });
+}
+
+/** What a bulk save reports back, per resource. */
+export const BulkSaveResultSchema = z
+  .object({
+    resource: z.string(),
+    created: z.number().int().nonnegative(),
+    updated: z.number().int().nonnegative(),
+    deleted: z.number().int().nonnegative(),
+  })
+  .meta({ id: "BulkSaveResult" });
+export type BulkSaveResult = z.infer<typeof BulkSaveResultSchema>;
+
 // ---------------------------------------------------------------------------
 // List field declarations, for the settings surfaces that use the list engine.
 // ---------------------------------------------------------------------------
+
+export const PEOPLE_LIST_FIELDS = {
+  display_name: { type: "text", label: "Name", sortable: true },
+  slug: { type: "text", label: "Slug", sortable: true },
+  relationship: {
+    type: "select",
+    label: "Relationship",
+    groupable: true,
+    sortable: true,
+    options: PERSON_RELATIONSHIPS,
+  },
+  home_country: { type: "text", label: "Home country", groupable: true, sortable: true },
+  is_active: { type: "boolean", label: "Active", groupable: true },
+} as const satisfies ListFields;
+
+export const HOTEL_BRAND_RULE_LIST_FIELDS = {
+  brand: { type: "text", label: "Brand", sortable: true },
+  stance: { type: "select", label: "Stance", groupable: true, sortable: true, options: BRAND_STANCES },
+  since: { type: "date", label: "Since", sortable: true },
+} as const satisfies ListFields;
+
+export const LOYALTY_PROGRAM_LIST_FIELDS = {
+  name: { type: "text", label: "Name", sortable: true },
+  code: { type: "text", label: "Code", sortable: true },
+  kind: { type: "select", label: "Kind", groupable: true, sortable: true, options: LOYALTY_PROGRAM_KINDS },
+  alliance: { type: "text", label: "Alliance", groupable: true, sortable: true },
+} as const satisfies ListFields;
+
+export const LOYALTY_ACCOUNT_LIST_FIELDS = {
+  account_label: { type: "text", label: "Account", sortable: true },
+  elite_tier: { type: "text", label: "Tier", groupable: true, sortable: true },
+  /** Sortable, and nullable: an unmeasured balance sorts as unknown, not as 0. */
+  points_balance: { type: "number", label: "Balance", sortable: true },
+  balance_as_of: { type: "date", label: "Read on", sortable: true },
+} as const satisfies ListFields;
+
+export const TRANSFER_PARTNER_LIST_FIELDS = {
+  ratio_from: { type: "number", label: "From", sortable: true },
+  ratio_to: { type: "number", label: "To", sortable: true },
+  is_active: { type: "boolean", label: "Active", groupable: true },
+  last_verified_on: { type: "date", label: "Verified", sortable: true },
+} as const satisfies ListFields;
+
+export const HOME_AIRPORT_LIST_FIELDS = {
+  code: { type: "text", label: "Code", sortable: true },
+  name: { type: "text", label: "Name", sortable: true },
+  city: { type: "text", label: "City", groupable: true, sortable: true },
+  rank: { type: "number", label: "Rank", sortable: true },
+  is_active: { type: "boolean", label: "Active", groupable: true },
+} as const satisfies ListFields;
+
+export const TASTE_GENRE_LIST_FIELDS = {
+  name: { type: "text", label: "Genre", sortable: true },
+  affinity: { type: "select", label: "Affinity", groupable: true, sortable: true, options: TASTE_AFFINITIES },
+  source: { type: "select", label: "Source", groupable: true, sortable: true, options: TASTE_SOURCES },
+} as const satisfies ListFields;
+
+export const VENUE_STANCE_LIST_FIELDS = {
+  place_name: { type: "text", label: "Place", sortable: true },
+  place_kind: { type: "select", label: "Kind", groupable: true, sortable: true, options: PLACE_KINDS },
+  stance: { type: "select", label: "Stance", groupable: true, sortable: true, options: PLACE_STANCES },
+  until: { type: "date", label: "Until", sortable: true },
+} as const satisfies ListFields;
 
 export const TRAVEL_WINDOW_LIST_FIELDS = {
   label: { type: "text", label: "Label", sortable: true },

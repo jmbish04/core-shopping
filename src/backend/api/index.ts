@@ -28,6 +28,8 @@ import { chatRouter } from "./routes/chat";
 import { chatDocumentsRouter } from "./routes/chat-documents";
 import { clientErrorRouter } from "./routes/client-error";
 import { adminRouter, configRouter } from "./routes/config";
+import { shopperConfigRouter } from "./routes/config/index";
+import { integrationsRouter } from "./routes/config/integrations";
 import { docsRouter } from "./routes/docs";
 import { filesRouter } from "./routes/files";
 import { healthRouter } from "./routes/health";
@@ -125,7 +127,15 @@ app.get("/api/swagger", swaggerUI({ url: "/api/openapi.json" }));
 
 app.route("/api/auth", authRouter);
 app.route("/api/health", healthRouter);
-app.route("/api/config", configRouter);
+/**
+ * The shopper configuration (cs-be-2-8) owns `/api/config`. The template's
+ * key/value `global_config` router keeps its routes under `/api/lab/config`,
+ * beside the `/lab/*` pages, rather than being deleted — nothing in the
+ * frontend called it at either path.
+ */
+app.route("/api/config", shopperConfigRouter);
+app.route("/api/integrations", integrationsRouter);
+app.route("/api/lab/config", configRouter);
 app.route("/api/admin", adminRouter);
 app.route("/api/docs", docsRouter);
 
