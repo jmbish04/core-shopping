@@ -1,7 +1,7 @@
 # `venue_stances` is named for venues and has to hold countries
 
 - **Date:** 2026-10-25
-- **Status:** open — needs Justin's call, default stated below
+- **Status:** decided 2026-10-26 — default stands, no action pending
 - **Author:** Claude Code (session: config layer and the four spec gaps)
 - **Affects:** `venue_stances` in `src/backend/pg/schemas/config/taste.ts`, PR #19
 
@@ -72,4 +72,10 @@ so nobody is misled by the name alone.
 
 ## Decision
 
-_(unanswered)_
+**2026-10-26, Justin: no preference either way.** The stated default therefore
+stands — option 2, leave it as `venue_stances`.
+
+`place_kind` already carries the truth, the schema file explains the mismatch,
+and `/docs/model` describes the table as holding place stances. Nothing is
+broken and nothing is pending. **Do not raise this again**; if the name ever
+becomes a real irritation, the rename is one migration on an empty table.

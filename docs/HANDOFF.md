@@ -79,11 +79,13 @@ self-hosted Proxmox pool with no `gh` on it, so the job dies on
 PR check; `Workers Builds` runs on `main`. The local gate is the only gate
 these changes have had before merge.
 
-**Two decisions are open for Justin**, recorded in `docs/decisions/`:
-`2026-10-25-venue-stances-holds-countries.md` (the table is named for venues
-and has to hold countries) and `2026-10-25-mermaid-for-docs-model.md` (the ER
-diagram is now 49 relationship lines of unrendered source; the earlier decision
-rejected a CLIENT dependency, which is not the same as rendering at build time).
+**Both decisions are CLOSED — nothing is waiting on Justin.** Asked on
+2026-10-26 he had no preference either way, so the stated defaults stand:
+`venue_stances` keeps its name (`place_kind` carries the truth), and
+`/docs/model` keeps its ER diagram as Mermaid source with no `mermaid`
+dependency added. Records: `docs/decisions/2026-10-25-venue-stances-holds-countries.md`
+and `docs/decisions/2026-10-25-mermaid-for-docs-model.md`. **Do not raise
+either again** — both say so.
 
 **Still not built, and these PRs do not pretend otherwise:** `cs-be-3-2`'s
 briefing (so the wishlist, idea and config slices are the functions it will

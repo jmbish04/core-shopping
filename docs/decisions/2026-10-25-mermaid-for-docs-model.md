@@ -1,7 +1,7 @@
 # Whether to add `mermaid` so `/docs/model`'s ER diagram renders
 
 - **Date:** 2026-10-25
-- **Status:** open — needs Justin's call, default stated below
+- **Status:** decided 2026-10-26 — default stands, no action pending
 - **Author:** Claude Code (session: config layer and the four spec gaps)
 - **Affects:** `src/frontend/pages/docs/model.astro`
 
@@ -58,4 +58,11 @@ which is why this is a question rather than a commit.
 
 ## Decision
 
-_(unanswered)_
+**2026-10-26, Justin: no preference either way.** The stated default therefore
+stands — option 3, leave the diagram as Mermaid source, which also leaves the
+2026-10-17 decision standing.
+
+No `mermaid` dependency is added, in the browser or at build time.
+**Do not raise this again** unless someone actually asks for the diagram to
+render; the note about build-time rendering being a different option from a
+client dependency is kept above so the next person does not re-derive it.
