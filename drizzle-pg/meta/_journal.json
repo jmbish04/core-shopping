@@ -57,6 +57,13 @@
       "when": 1792969834738,
       "tag": "0007_thankful_cobalt_man",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792970645564,
+      "tag": "0008_steady_dakota_north",
+      "breakpoints": true
     }
   ]
 }

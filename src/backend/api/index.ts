@@ -31,6 +31,7 @@ import { adminRouter, configRouter } from "./routes/config";
 import { shopperConfigRouter } from "./routes/config/index";
 import { integrationsRouter } from "./routes/config/integrations";
 import { goalOccasionsRouter } from "./routes/config/goal-occasions";
+import { configSnapshotsRouter } from "./routes/config/snapshots";
 import { docsRouter } from "./routes/docs";
 import { filesRouter } from "./routes/files";
 import { healthRouter } from "./routes/health";
@@ -135,6 +136,7 @@ app.route("/api/health", healthRouter);
  * beside the `/lab/*` pages, rather than being deleted — nothing in the
  * frontend called it at either path.
  */
+app.route("/api/config", configSnapshotsRouter);
 app.route("/api/config", shopperConfigRouter);
 app.route("/api/integrations", integrationsRouter);
 app.route("/api/lab/config", configRouter);

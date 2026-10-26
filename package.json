@@ -43,7 +43,8 @@
     "verify:config-api": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-config-api-sql.mjs",
     "verify:wishlist": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-wishlist-sql.mjs",
     "verify:occasions": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-occasions-sql.mjs",
-    "verify:ideas": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-ideas-sql.mjs"
+    "verify:ideas": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-ideas-sql.mjs",
+    "verify:config-snapshot": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-config-snapshot-sql.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.3",
