@@ -39,7 +39,7 @@ Every config table is empty: no fixture leaked.
   binding. `not_built` never degrades the verdict; a written-down gap is not an
   outage.
 
-**Five things that cost real time, worth not rediscovering:**
+**Six things that cost real time, worth not rediscovering:**
 
 1. **Drizzle's `transaction()` on node-postgres issues BEGIN/COMMIT, not a
    savepoint.** Calling it inside a manual `begin` COMMITS the outer
@@ -61,6 +61,40 @@ Every config table is empty: no fixture leaked.
    `sed` with the wrong indentation left the code untouched and the check went
    green against code believed broken. Every plant now asserts its edit landed
    before the run is trusted.
+6. **A test of the query layer proves nothing about the HTTP surface.** A
+   deleted `app.route(...)` left typecheck, 29 selfcheck suites and 38
+   real-Postgres checks all green while every route 404'd. `app.request()` in
+   a plain-Node check closes it; note that it bypasses `edge.ts`, so it says
+   nothing about auth.
+
+**`scripts/selfcheck-route-mounts.mjs` is new and is the one to keep.** A peer
+session deleted `app.route("/api/config", shopperConfigRouter)` from
+`api/index.ts` and **everything stayed green** — typecheck, all 29 selfcheck
+suites, and `verify:config-api`'s 38 real-Postgres checks — while every
+`/api/config/*` route 404'd. The cause is structural: every `verify:*` script
+here drives the QUERY layer directly, because that is where the SQL worth
+testing lives, so none of them goes through Hono and none can tell whether a
+router is reachable.
+
+It builds the real Hono app and dispatches through it: 10 checks over 95
+paths, offline, no database. Mounted **by handler identity**, not path and
+method — a different router answering the same path cannot satisfy it — plus
+the prefix, plus not-404, plus a control (paths that must still 404, without
+which a change making everything answer 401 would read as a pass).
+
+Three things had to change to load the app outside the bundler, all
+behaviour-preserving: `health.ts`'s constructor parameter property (the only
+one in `src/backend`, and it made the whole app unloadable in plain Node), its
+`_journal.json` import needing `with { type: "json" }`, and an alias resolver
+that reads `tsconfig.json` paths rather than a four-prefix list — the API also
+reaches `@db/schemas`, `@/db/schema` and `@/services/*`.
+
+**And the correction worth carrying:** the first draft asserted "every new path
+is refused without auth" and PASSED, on 500s from the missing Hyperdrive
+binding rather than 401s. **There is no auth middleware in the Hono app** —
+the gate is `accessFor` in `edge.ts`, upstream, which `app.request()`
+bypasses. A check that reads as a security assertion and measures nothing is
+the same defect it was written to fix. It asserts `accessFor` directly now.
 
 **`scripts/selfcheck-schema-drift.mjs` is new and matters repo-wide.** Every
 other structural self-check asserts the GENERATED migration, so a regression in
