@@ -650,6 +650,84 @@ export const WISHLIST_LIST_FIELDS = {
   added_at: { type: "date", label: "Added", sortable: true },
 } as const satisfies ListFields;
 
+/**
+ * What kind of window an occasion is.
+ *
+ * The brief names two of these outright — "anticipating upcoming sales like
+ * Amazon Prime Day" and "SF restaraunt week [we always forget]" — plus the
+ * dated personal ones: "searching for a wedding gift, anniversary gift,
+ * holiday gift".
+ */
+export const OCCASION_KINDS = ["sale_event", "festival", "personal", "on_sale_date"] as const;
+export const OccasionKindSchema = z.enum(OCCASION_KINDS).meta({ id: "OccasionKind" });
+export type OccasionKind = (typeof OCCASION_KINDS)[number];
+
+/**
+ * A dated window a goal should wake up BEFORE.
+ *
+ * `lead_days` is the whole point. `travel_windows` says whether a date range
+ * is a good time to travel; this says a goal becomes due `lead_days` ahead of
+ * a window opening, so Prime Day is worked three weeks early rather than
+ * discovered on the day. Every one of these was previously found late or not
+ * at all, because `events.sales_end_at` is per-entity and only exists once an
+ * event has already been found.
+ *
+ * When `recurs_yearly` is set the YEAR in `starts_on` and `ends_on` is
+ * ignored: only month and day matter, so "Prime Day is mid-July" is one row
+ * rather than one row a year, and a window may legitimately end before it
+ * starts (28 December to 4 January).
+ */
+const occasionFields = {
+  label: z.string().trim().min(1).max(200),
+  kind: OccasionKindSchema,
+  starts_on: IsoDate,
+  ends_on: IsoDate,
+  recurs_yearly: z.boolean().default(false),
+  /** How many days before the window opens a linked goal becomes due. */
+  lead_days: z.number().int().min(0).max(365).default(14),
+  notes: z.string().max(2_000).default(""),
+  /** Whose occasion, for a personal one. Null means the household's. */
+  for_person_id: Id.nullish(),
+  is_active: z.boolean().default(true),
+} as const;
+
+export const OccasionInputSchema = z
+  .object(occasionFields)
+  .refine((o) => o.recurs_yearly || o.starts_on <= o.ends_on, {
+    message: "ends_on must not precede starts_on unless the occasion recurs yearly",
+    path: ["ends_on"],
+  })
+  .meta({ id: "OccasionInput" });
+export type OccasionInput = z.infer<typeof OccasionInputSchema>;
+
+export const OccasionPatchSchema = z.object(occasionFields).partial().meta({ id: "OccasionPatch" });
+
+export const OccasionSchema = z
+  .object({ id: Id, ...occasionFields, created_at: IsoDateTime, updated_at: IsoDateTime })
+  .meta({ id: "Occasion" });
+export type Occasion = z.infer<typeof OccasionSchema>;
+
+export const OCCASION_LIST_FIELDS = {
+  label: { type: "text", label: "Occasion", sortable: true },
+  kind: { type: "select", label: "Kind", groupable: true, sortable: true, options: OCCASION_KINDS },
+  starts_on: { type: "date", label: "Opens", sortable: true },
+  ends_on: { type: "date", label: "Closes", sortable: true },
+  lead_days: { type: "number", label: "Lead days", sortable: true },
+  recurs_yearly: { type: "boolean", label: "Recurs yearly", groupable: true },
+  is_active: { type: "boolean", label: "Active", groupable: true },
+} as const satisfies ListFields;
+
+/** Linking a goal to an occasion it should wake for. */
+export const GoalOccasionInputSchema = z
+  .object({
+    goal_id: Id,
+    occasion_id: Id,
+    /** Overrides the occasion's own lead for this goal. Null uses the occasion's. */
+    lead_days_override: z.number().int().min(0).max(365).nullish(),
+  })
+  .meta({ id: "GoalOccasionInput" });
+export type GoalOccasionInput = z.infer<typeof GoalOccasionInputSchema>;
+
 // ---------------------------------------------------------------------------
 // PATCH schemas.
 //
@@ -819,5 +897,6 @@ export const CONFIG_RESOURCES = [
   "venue-stances",
   "trip-history",
   "wishlist",
+  "occasions",
 ] as const;
 export type ConfigResource = (typeof CONFIG_RESOURCES)[number];

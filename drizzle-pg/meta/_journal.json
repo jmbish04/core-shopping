@@ -43,6 +43,13 @@
       "when": 1792968795095,
       "tag": "0005_safe_turbo",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792969506051,
+      "tag": "0006_bitter_lord_tyger",
+      "breakpoints": true
     }
   ]
 }
