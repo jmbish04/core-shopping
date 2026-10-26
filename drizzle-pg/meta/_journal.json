@@ -29,6 +29,13 @@
       "when": 1792239521985,
       "tag": "0003_thick_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792966202005,
+      "tag": "0004_big_steel_serpent",
+      "breakpoints": true
     }
   ]
 }

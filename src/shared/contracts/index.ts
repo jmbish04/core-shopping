@@ -13,3 +13,4 @@ export * from "./sightings";
 export * from "./hitl";
 export * from "./alerts";
 export * from "./dashboard";
+export * from "./config";

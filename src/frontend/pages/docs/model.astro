@@ -16,7 +16,13 @@ import {
   ENTITY_KINDS,
   GOAL_CATEGORIES,
   LESSON_SCOPES,
+  PLACE_KINDS,
+  PLACE_STANCES,
   PROPOSAL_STATUSES,
+  TASTE_AFFINITIES,
+  TASTE_SOURCES,
+  TRAVEL_WINDOW_STANCES,
+  TRIP_KINDS,
   VERDICTS,
 } from "@/shared/contracts";
 
@@ -75,6 +81,21 @@ const otherRows: DocRow[] = [
   { term: "health_probes", mono: true, body: "A scratch table the health check writes and reads back, to prove a write is visible to the next read." },
 ];
 
+const configRows: DocRow[] = [
+  { term: "people", mono: true, body: "Who the shopping is for. Carries a home country, which lengthens that person's home leg, and the shopping interests they treat themselves to. Person-specific facts live here so preferences can stay one household row." },
+  { term: "preferences", mono: true, body: "One household row: the ROI gate as numbers rather than prose. Minimum and maximum trip nights, days per leg and per home leg, maximum legs, the minimum days since the last trip, the notice needed to ask for time off, the workdays available, the acceptable cabins best first, how many legs must be premium, and the hotel bar in plain words." },
+  { term: "hotel_brand_rules", mono: true, body: "A hard rule about a brand: prefer, neutral or avoid, with the reason and the date it was taken. The reason is quoted back by a proposal's violates-rule field, so a flagged hotel says why. One stance per brand whatever its capitalisation." },
+  { term: "loyalty_programs", mono: true, body: "A loyalty currency: airline, hotel, card, rail or other. Its code is the id the points-programme fields elsewhere carry." },
+  { term: "loyalty_accounts", mono: true, body: "One person's standing in one programme. A balance nobody has read is null, with a null read-date beside it, and null is not zero: a surface that draws it as 0 points would hide a seat you can afford." },
+  { term: "transfer_partners", mono: true, body: "A transfer route between two programmes, as two integers (1,000 to 800, never 0.8), with how long it takes, any bonus, and when the ratio was last checked." },
+  { term: "travel_windows", mono: true, body: `A date range with a stance: ${list(TRAVEL_WINDOW_STANCES)}. Neutral is deliberate — the space between the good and the bad ranges, where an agent is invited to argue the case. No window covering a date is different: nothing has been said. A window that recurs yearly ignores the year, so one row covers every December, and may end before it starts.` },
+  { term: "home_airports", mono: true, body: "The airports watched for new routes and cheaper fares, ranked, with the drive time." },
+  { term: "taste_artists", mono: true, body: `Performers worth watching for, with a tier (big name, rising, unknown), an affinity (${list(TASTE_AFFINITIES)}) and a source (${list(TASTE_SOURCES)}). Source is load-bearing: a manual row is something you said, an agent or spotify row is a guess, and a guess must not be quoted back as a stated preference. Would-travel means a date anywhere clears the location bar.` },
+  { term: "taste_genres", mono: true, body: "Genres, with the same affinity and source vocabulary. One row per genre per person, and one household row that cannot be duplicated." },
+  { term: "venue_stances", mono: true, body: `A stance about a place — ${list(PLACE_STANCES)} — keyed by name, with a kind (${list(PLACE_KINDS)}) and an optional entity link. Keyed by name because a stance is stated before anything has been seen. Played-out carries an expiry, so one sentence does not rule a country out forever.` },
+  { term: "trip_history", mono: true, body: `What has already been taken: ${list(TRIP_KINDS)}, with the dates, legs and workdays used. This is what the days-since-last-trip field on a calendar check is derived from. A trip with no person is one the household took together and resets everyone's clock; a trip with a person is only theirs.` },
+];
+
 const relationshipRows: DocRow[] = [
   { term: "Deleting a goal", body: "Removes its criteria, revisions, run links and goal-scoped lessons. Sightings, proposals, reviews and alerts keep their rows with the goal cleared." },
   { term: "Deleting a run", body: "Removes its events and goal links. Tool calls, sightings and proposals keep their rows with the run cleared." },
@@ -82,6 +103,9 @@ const relationshipRows: DocRow[] = [
   { term: "Deleting a proposal", body: "Removes its items, trip package, legs, days, itinerary items, flight and hotel options, calendar check and reviews. Alerts keep their rows with the proposal cleared." },
   { term: "Reason codes", body: "A review stores the codes as text, without a foreign key. A retired code stays readable on the reviews that used it." },
   { term: "Tags", body: "A tag mapping names its subject by table name and id, so it cannot be enforced by a foreign key." },
+  { term: "Deleting a person", body: "Removes their loyalty accounts, their own travel windows and their own taste and stance rows. Their trips keep their rows with the person cleared, so the household's history survives." },
+  { term: "Deleting a loyalty programme", body: "Removes the accounts in it and the transfer routes into and out of it." },
+  { term: "Taste and stance links", body: "The entity link on a taste artist or a place stance is optional and is cleared when the entity goes, because the preference was stated before anything was seen and outlives it." },
 ];
 
 const erDiagram = `erDiagram
@@ -131,7 +155,24 @@ const erDiagram = `erDiagram
 
   goals |o--o{ alerts : "raises"
   proposals |o--o{ alerts : "raises"
-  entities |o--o{ alerts : "raises"`;
+  entities |o--o{ alerts : "raises"
+
+  people ||--o{ loyalty_accounts : "holds"
+  loyalty_programs ||--o{ loyalty_accounts : "issues"
+  loyalty_programs ||--o{ transfer_partners : "transfers from"
+  loyalty_programs ||--o{ transfer_partners : "transfers to"
+  people |o--o{ travel_windows : "constrains"
+  people |o--o{ taste_artists : "prefers"
+  people |o--o{ taste_genres : "prefers"
+  people |o--o{ venue_stances : "holds"
+  people |o--o{ trip_history : "took"
+  proposals |o--o{ trip_history : "became"
+  entities |o--o| taste_artists : "matched to"
+  entities |o--o| venue_stances : "matched to"
+  trip_history }o--o| calendar_checks : "days since derived from"
+  travel_windows }o--o| calendar_checks : "stance read from"
+  hotel_brand_rules }o--o{ hotel_options : "flags"
+  preferences }o--o{ proposals : "gates"`;
 ---
 
 <DocsPage
@@ -182,6 +223,14 @@ const erDiagram = `erDiagram
 
   <DocSection title="Review and the brain" description="How your decisions become instructions." flush>
     <DocRows rows={brainRows} />
+  </DocSection>
+
+  <DocSection
+    title="Configuration"
+    description="The self-serve tables. Every settings page maps onto one of these."
+    flush
+  >
+    <DocRows rows={configRows} />
   </DocSection>
 
   <DocSection title="Alerts and health" flush>
