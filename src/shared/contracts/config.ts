@@ -728,6 +728,89 @@ export const GoalOccasionInputSchema = z
   .meta({ id: "GoalOccasionInput" });
 export type GoalOccasionInput = z.infer<typeof GoalOccasionInputSchema>;
 
+/**
+ * An idea's life. `candidate` is the only one a briefing hands to an agent.
+ * `dropped` is kept rather than deleted so the same idea is not re-recorded
+ * every time a similar proposal is declined.
+ */
+export const IDEA_STATUSES = ["candidate", "promoted", "dropped"] as const;
+export const IdeaStatusSchema = z.enum(IDEA_STATUSES).meta({ id: "IdeaStatus" });
+export type IdeaStatus = (typeof IDEA_STATUSES)[number];
+
+/** A month of the year, 1 to 12. An idea's season is months, never dates. */
+export const MonthNumber = z.number().int().min(1).max(12);
+
+/**
+ * A dateless "worth targeting next year".
+ *
+ * The season is MONTHS and that is the point: an idea with a date is a
+ * proposal, and an idea with a season survives the year turning over. A season
+ * may wrap the new year, so `target_month_start` may exceed
+ * `target_month_end` (November to February) — the same shape as a recurring
+ * occasion window, and the reason there is no start-before-end rule here.
+ */
+const ideaFields = {
+  title: z.string().trim().min(1).max(300),
+  category: z.enum(["experience", "travel", "product", "gift", "deal", "research"]).default("travel"),
+  rationale: z.string().max(8_000).default(""),
+  target_month_start: MonthNumber.nullish(),
+  target_month_end: MonthNumber.nullish(),
+  confidence: z.number().min(0).max(1).default(0),
+  status: IdeaStatusSchema.default("candidate"),
+  /** The proposal whose decline recorded this. */
+  source_proposal_id: Id.nullish(),
+  /** And the verdict itself, so the reason is reachable from the idea. */
+  source_review_id: Id.nullish(),
+  /** Hidden from a briefing until this date. Null means always eligible. */
+  revisit_after: IsoDate.nullish(),
+  /** The entities it is about: the destination, the performer, the venue. */
+  entities: z
+    .array(z.object({ entity_id: Id, role: z.string().max(80).default("") }))
+    .max(50)
+    .default([]),
+} as const;
+
+export const IdeaInputSchema = z
+  .object(ideaFields)
+  .refine(
+    (i) =>
+      (i.target_month_start == null) === (i.target_month_end == null),
+    {
+      message: "A season needs both months or neither",
+      path: ["target_month_end"],
+    },
+  )
+  .meta({ id: "IdeaInput" });
+export type IdeaInput = z.infer<typeof IdeaInputSchema>;
+
+export const IdeaPatchSchema = z.object(ideaFields).partial().meta({ id: "IdeaPatch" });
+
+export const IdeaSchema = z
+  .object({
+    id: Id,
+    ...ideaFields,
+    promoted_goal_id: Id.nullable(),
+    supersedes_id: Id.nullable(),
+    created_at: IsoDateTime,
+    updated_at: IsoDateTime,
+  })
+  .meta({ id: "Idea" });
+export type Idea = z.infer<typeof IdeaSchema>;
+
+export const IDEA_LIST_FIELDS = {
+  title: { type: "text", label: "Idea", sortable: true },
+  category: {
+    type: "select",
+    label: "Category",
+    groupable: true,
+    sortable: true,
+    options: ["experience", "travel", "product", "gift", "deal", "research"],
+  },
+  status: { type: "select", label: "Status", groupable: true, sortable: true, options: IDEA_STATUSES },
+  confidence: { type: "number", label: "Confidence", sortable: true },
+  revisit_after: { type: "date", label: "Revisit after", sortable: true },
+} as const satisfies ListFields;
+
 // ---------------------------------------------------------------------------
 // PATCH schemas.
 //

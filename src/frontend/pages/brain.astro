@@ -1,12 +1,28 @@
 ---
+/**
+ * Brain: what the system has learned, and what it is keeping for later.
+ *
+ * The idea bank (maestro cs-gap-idea-bank) is real here: it shows the ideas in
+ * the database or a real empty state, never a placeholder. The lessons half of
+ * this page is still epic cs-fe-8, and says so rather than implying it is
+ * built.
+ */
 import { PageBody, PageToolbar } from "@/components/blocks/app-shell-2/components/page-shell";
+import { IdeaBank } from "@/components/brain/idea-bank";
 import { EmptyState } from "@/components/common";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 ---
 
 <BaseLayout title="Brain" description="What your shopper agents have learned about you.">
   <PageBody>
-    <PageToolbar title="Brain" description="Understand and refine the preferences, patterns, and context guiding future work." />
-    <EmptyState title="Brain is being built" description="Maestro epic cs-fe-8 will make agent learning visible and manageable here." />
+    <PageToolbar
+      title="Brain"
+      description="Understand and refine the preferences, patterns, and context guiding future work."
+    />
+    <IdeaBank client:visible />
+    <EmptyState
+      title="Lessons are being built"
+      description="Maestro epic cs-fe-8 will show the preferences the review loop has inferred, and let you make them active or retire them."
+    />
   </PageBody>
 </BaseLayout>
