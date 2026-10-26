@@ -22,3 +22,4 @@ export * from "@/backend/pg/schemas/config/people";
 export * from "@/backend/pg/schemas/config/loyalty";
 export * from "@/backend/pg/schemas/config/travel";
 export * from "@/backend/pg/schemas/config/taste";
+export * from "@/backend/pg/schemas/config/wishlist";

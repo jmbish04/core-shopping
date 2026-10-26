@@ -40,7 +40,8 @@
     "verify:run-detail": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-run-detail-sql.mjs",
     "verify:goal-counts": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-goal-counts-sql.mjs",
     "verify:trip-history": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-trip-history-sql.mjs",
-    "verify:config-api": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-config-api-sql.mjs"
+    "verify:config-api": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-config-api-sql.mjs",
+    "verify:wishlist": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-wishlist-sql.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.3",

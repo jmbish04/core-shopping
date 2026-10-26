@@ -8,6 +8,7 @@ import { sql } from "drizzle-orm";
 import { boolean, index, integer, jsonb, pgTable, real, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { entities, sources } from "@/backend/pg/schemas/catalog/entities";
+import { wishlistItems } from "@/backend/pg/schemas/config/wishlist";
 import { goals } from "@/backend/pg/schemas/goals/goals";
 import { agentRuns } from "@/backend/pg/schemas/runs/runs";
 
@@ -21,6 +22,14 @@ export const sightings = pgTable(
     runId: uuid("run_id").references(() => agentRuns.id, { onDelete: "set null" }),
     goalId: uuid("goal_id").references(() => goals.id, { onDelete: "set null" }),
     sourceId: uuid("source_id").references(() => sources.id, { onDelete: "set null" }),
+    /**
+     * The wishlist row this sighting answers (maestro cs-gap-wishlist). Set by
+     * the caller when the match is KNOWN, never inferred from the title here —
+     * "shark slurpee machine" matching a listing called "Slushy Magic" is a
+     * judgement an agent makes once and records, not a string comparison every
+     * reader of this table would have to repeat and could disagree about.
+     */
+    wishlistItemId: uuid("wishlist_item_id").references(() => wishlistItems.id, { onDelete: "set null" }),
     url: text("url"),
     urlCanonical: text("url_canonical"),
     urlHash: text("url_hash"),
@@ -47,6 +56,7 @@ export const sightings = pgTable(
     index("sightings_run_idx").on(t.runId),
     index("sightings_url_hash_idx").on(t.urlHash),
     index("sightings_email_idx").on(t.emailMessageId),
+    index("sightings_wishlist_idx").on(t.wishlistItemId, t.seenAt),
   ],
 );
 
