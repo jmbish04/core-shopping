@@ -145,9 +145,25 @@ app.route("/api/docs", docsRouter);
 
 // Feature APIs (open — see auth note above)
 app.route("/api/projects", projectsRouter);
-app.route("/api/goals", goalsRouter);
-app.route("/api/goals", browseGoalsRouter);
+/**
+ * ORDER MATTERS on `/api/goals`, and getting it wrong is silent.
+ *
+ * `goalOccasionsRouter` declares the STATIC path `/due`. `goalsRouter`
+ * declares `/{id}`. Hono resolves overlapping patterns in registration
+ * order, so while `goalsRouter` was mounted first, `GET /api/goals/due`
+ * reached the by-id handler with `id = "due"` and answered
+ * `404 goal_not_found` — measured against the deployed Worker 2026-10-26,
+ * after PRs #19 to #24 merged. The route was in `/openapi.json` the whole
+ * time, which is what made it look fine.
+ *
+ * So every router that declares a static path under this base is mounted
+ * BEFORE the one that declares `/{id}`. `scripts/selfcheck-route-mounts.mjs`
+ * asserts it, app-wide, by dispatching each registered pattern and checking
+ * which pattern answers.
+ */
 app.route("/api/goals", goalOccasionsRouter);
+app.route("/api/goals", browseGoalsRouter);
+app.route("/api/goals", goalsRouter);
 app.route("/api/runs", runsRouter);
 app.route("/api/runs", browseRunsRouter);
 app.route("/api/sightings", sightingsRouter);
