@@ -48,8 +48,8 @@ function SparkTooltip({
   const point = payload?.[0]?.payload;
   if (!active || !point) return null;
   return (
-    <div className="bg-popover rounded-lg border px-2 py-1.5 text-[11px] shadow-sm">
-      <div className="text-muted-foreground mb-1 text-[10px] font-medium uppercase">
+    <div className="bg-popover rounded-lg border px-2 py-1.5 text-xs shadow-sm">
+      <div className="text-muted-foreground mb-1 text-xs font-medium uppercase">
         {shortDate(`${point.date}T00:00:00Z`)}
       </div>
       <div className="text-popover-foreground font-semibold tabular-nums">
