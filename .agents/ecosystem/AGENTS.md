@@ -218,6 +218,17 @@ delimited managed block of pointers at the top. Everything outside that block is
 left byte-for-byte alone, so the effective briefing is **local `AGENTS.md` +
 colby-ecosystem's**, not one replacing the other.
 
+**These briefings are themselves generated — the rendered file is an artifact.**
+All 11 machine-wide targets, every `AGENTS*.md` above plus `~/.claude/CLAUDE.md`,
+are rendered from `generator/blocks/*.md` through `generator/generate.mjs` and
+`generator/targets.json` in colby-ecosystem. So a change to a briefing is a change
+to a **block**, and editing a rendered file fails the repo's own
+`briefings match their blocks` gate: `node generator/generate.mjs check` names the
+target `STALE` and CI goes red with no other failure. Measured twice —
+`decisions/2026-10-15-claude-pipeline-triage.md`, and again on 2026-11-02 in PR 128,
+that time by following `scripts/sync-agents`' premise that the home copy is the
+working copy. "End of session" below carries the loop to run.
+
 ## Installing it — `gh-tools agents-sync`
 
 Do this yourself; it is not a hand-off. One command, in the repo you are working in:
@@ -1443,6 +1454,26 @@ nobody reads is, from the operator's side, work nobody did.
 If yes to any: **present the proposals and ask Justin to review.** Do not edit
 `~/AGENTS.md` or a template unprompted from a session about something else — say
 what you would change and why, and let him decide.
+
+**When he approves one, edit the BLOCK, not the briefing.** `~/AGENTS.md`, the
+`AGENTS-*.md` topic files and `~/.claude/CLAUDE.md` are all rendered from
+`generator/blocks/*.md` in colby-ecosystem, so the home copy and the repo copy are
+both output. The loop, and `apply` is not the whole of it:
+
+```bash
+node generator/generate.mjs apply            # renders into generator/out/, writes nothing tracked
+cp generator/out/AGENTS.md AGENTS.md         # the render over each target it changed
+node generator/generate.mjs check            # must say 11 targets aligned
+```
+
+`apply` only ever writes `generator/out/` or the system temp directory, so the gate
+stays red until you copy the render over its target — step 2 is the one that is easy
+to miss, because step 1 prints `wrote AGENTS.md` either way. The repo's
+`briefings match their blocks` gate fails on a rendered-file edit and names the stale
+target. Two sessions have now lost a build to this, the second on 2026-11-02 (PR 128)
+by doing exactly what `scripts/sync-agents` describes. One more trap: a local checkout
+whose blocks are as stale as its rendered files reports every target aligned and
+proves nothing about `main`, so render against current `main`.
 
 **`backpass` is the evidence-backed version of step 1, and it is installed.** It reads
 the sessions that actually ran on this machine and proposes edits to `~/AGENTS.md`
