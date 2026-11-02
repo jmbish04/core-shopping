@@ -47,6 +47,23 @@ These rules are decided. Every one has been corrected by hand more than once:
 9. **Selects render labels through a shared wrapper, never a raw
    `<SelectValue>`.** Both libraries paint the wrong thing without one, and only
    on first paint. Same section.
+10. **Dark is the DEFAULT, not the only theme — every surface renders in both.**
+   A theme file puts the LIGHT values in `:root` and the dark ones in a `.dark`
+   block, both defining `--background`, `--foreground` and `--card`; an HTML
+   entry ships `class="dark"` only where something toggles the `dark` class on
+   `documentElement` at runtime, so it paints dark before the first frame
+   without pinning itself there. Measured on colby-chrome-ext before PR #13:
+   eleven entries pinned to `class="dark"`, the dark values sitting in `:root`,
+   and a trailing `.dark` block holding nine overrides — there was no light
+   theme to switch to, and nothing said so.
+11. **No font size below 12px (`text-xs`) in code we own.** Not
+   `text-[11px]`, not `text-[0.6875rem]`, not a CSS `font-size` under the floor.
+   212 arbitrary sizes were converted by hand across four PRs on three Chrome
+   extensions. This is a HOUSE rule, not ReUI's — ReUI's own `kit/badge.tsx`
+   ships `text-[0.6rem]` for `size="xs"` — so registry-installed source is
+   exempt, because `shadcn add` reverts an edit to it. The hand-edited
+   single-file primitives sitting flat in `components/ui/` and
+   `components/reui/` are **ours** and are checked.
 
 **`scripts/ui-guard.mjs` enforces the checkable subset — once a repo wires it
 into `pnpm run build`.** Measured 2026-10-04: not one repo under
@@ -60,7 +77,8 @@ violations switches the failing rules off in `.ui-guard.json` with a
 It is a deterministic scan, not a review: `no-table`, `no-pie-chart`,
 `no-vertical-bar`, `no-raw-color`, `no-custom-palette` (a tinted `--primary` /
 `--ring` in the theme CSS — where the teal actually lived), `dark-default`,
-`app-shell`, `base-ui-style`, `no-radix`, `select-wrapper`. `pull-agents` ships it to every
+`app-shell`, `base-ui-style`, `no-radix`, `select-wrapper`, `light-theme`,
+`font-size-floor`. `pull-agents` ships it to every
 frontend repo with the briefings. A genuine exception is suppressed on that one
 line, with a reason that a reviewer can disagree with:
 
@@ -78,6 +96,16 @@ decision. An opt-out nobody can attribute is the rule being deleted:
 ```
 
 Rules 6 and 7 are not checkable by a regex; they are yours to hold.
+
+**`light-theme` and `font-size-floor` do not share the other rules' exemption set,
+and that is deliberate.** `components/ui/` and `components/reui/` hold both kinds of
+file side by side: the single-file primitives flat in them are hand-edited and shared
+verbatim across three extensions, while the multi-file blocks `shadcn add` writes into
+their SUBdirectories (`reui/kit/`, `reui/data-grid/`, …) are not ours. A flat file can
+still be theirs — `ui/questionnaire.tsx` imports `@shadcn/react/questionnaire` — so the
+third test is the registry import in the file rather than its path. Anything else that
+breaks the floor is flagged, and `ui-guard-allow font-size-floor: <why>` on the line is
+the answer when it is genuinely one of theirs.
 
 ---
 
