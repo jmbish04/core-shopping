@@ -193,8 +193,24 @@ script, `tokens show WORKER_API_KEY --value-only`, or `requireSecret`/
 `require_secret` from the scaffolded SDK (`tokens agent-onboarding`). Never
 hardcode it, never read it from a `.env`.
 
-**Measured API traps (retested 2026-09-13):**
+**Measured API traps** — the worklog pair measured 2026-11-02, the rest retested
+2026-09-13. Each carries its own date, because a single date on a growing list
+goes stale and then misdates everything under it:
 
+- **A worklog POST takes `body`, not `note` — and the wrong name is ACCEPTED.**
+  `POST /api/tasks/{id}/worklog` with `{ kind, note }` creates the entry with the
+  right kind, the right timestamp and an **empty body**. Nothing reads as a
+  failure. The error that names it, `body: Supply body or body_doc.`, fires only
+  when the text field is missing altogether, so a request holding both a valid
+  `kind` and a `note` never produces it. Measured 2026-11-02 on core-spotify:
+  three entries at `bodyLen` 0 beside a correct earlier one at 1,010 characters,
+  and all three had been reported to Justin as recorded. Send `body`, or
+  `body_doc`.
+- **`kind` is a closed enum**: `note | progress | status_change | handoff |
+  blocker | claim`. Anything else is refused outright — `kind: Invalid option:
+  expected one of …`. `decision` is the one to watch, because this chapter's own
+  guidance ("what you decided and why") reads like a kind name, and that is what
+  an agent reached for twice in one session.
 - **`limit` is ignored.** `?limit=1` returned all 177 tasks; `?status_category=-done&limit=2`
   returned 112. Slice client-side, and never assume a list you asked to cap is capped.
 - **`POST /api/tasks` requires `task_type` *and* `priority` explicitly.** Omitting
@@ -205,6 +221,18 @@ hardcode it, never read it from a `.env`.
 - *(Fixed 2026-09-13: the unscoped `GET /api/tasks` used to 500 and now returns
   200. Scoping with `project_key` is still cheaper, and `GET /api/briefing` is
   still the better call for "what am I supposed to be doing".)*
+
+**Never coalesce an API response into a success string.** The two worklog traps
+above both reached Justin as "recorded" because the call site was
+`log?.entry?.id ?? "written"`. One failure stored an empty entry and the other
+was refused outright; the `??` printed the same word over both. The API answered
+honestly every time — the fallback was written over its answer. Return the
+response and read its `status`.
+
+This is the same defect the PreToolUse script lint already rejects in Bash — a
+`curl -s` into a blind parser, `|| true` on a build, a credential captured with
+its error silenced. **The lint cannot see inside a code-mode `execute` body**, so
+in an `execute` it is yours to hold.
 
 Open findings are filed as task `0fd70cecfba2` in the `colby-maestro` project.
 
@@ -282,6 +310,52 @@ The `colby-maestro` plugin (published from colby-ecosystem, enabled in user sett
 
 Use `maestro-task` for status and worklog (`maestro-task status <id> review`, `maestro-task log <id> note "..."`), and the `maestro-worklog` skill for which kind to write. The old `maestro-session-end.py` (local-mirror sync) is retired to `~/.claude/hooks/retired/`.
 
+## Out of token budget: Justin can approve a raise in chat, and you carry it out
+
+At 100% of a task's budget the gate denies nearly every tool. Your exit is to
+estimate what finishing costs and file the landing proposal - and then, since
+2026-11-02, to act on his answer rather than hand him the write.
+
+**Report the overage, give him the estimate, and tell him what to type.** A local
+hook cannot see him approve anything, so his prompt is where the approval is
+read, anchored at its start:
+
+| He types | Means |
+|---|---|
+| `approve budget +400k` | approved, 400,000 tokens |
+| `approve budget` · `budget ok` | approved, no amount - no ceiling enforced |
+| `extend the budget by 600k` · `top up budget +80k` · `raise my budget +2M` | the same |
+
+The gate then allows exactly two writes, through the colby-maestro MCP:
+`POST /api/budgets/landings/<id>/decide` with `decision: "extend_budget"`, and
+`POST /api/budgets` with `change_kind: "top_up"` (its `max_tokens` is the amount
+to ADD, and it carries the `updated_estimate` that backs it). **Take the decide
+call from the message rather than writing it yourself:** its body depends on the
+landing's state, and the Worker refuses the wrong one - a landing with no proposal
+yet needs `remaining_estimate_tokens` as well, and one already proposed refuses
+it. The gate reads the status from the verdict and emits the form that works. It is scoped to
+that task, lasts 30 minutes, covers three attempts, and every
+`extension_tokens` / `max_tokens` in the call must be within the figure he named.
+
+**Three things this does not do.** It does not let you raise a budget he has not
+approved in that message - ask, never assume. It does not widen anything else:
+not an edit, not a shell, not an MCP tool that merely carries the path in its
+input. And it does not change the Worker's own rules, so an approved top-up can
+still be refused 409 `over_allocates_parent` (the parent is out of tokens; only
+he can top THAT up) or because he locked the scope from the console.
+
+**Not in a Claude Code session?** Codex, Jules and bare scripts have no prompt
+for the hook to read, so whoever hears him relays it:
+`maestro-budget approve --task <id> --tokens 400000`, then
+`maestro-budget raise --task <id>` carries it out (it decides an open landing or
+tops the budget up, and refuses without a live approval). Same store, same TTL,
+same ceiling.
+
+`Read` and `ToolSearch` are the two tools always allowed while exhausted - the
+second because the MCP tool the deny message names is deferred in the desktop
+app, so without it the door has no handle. Full rules:
+`plugins/colby-maestro/README.md` → "Justin approves a raise".
+
 ## Playbooks: search before you execute, write one when you solve something
 
 **Colby Maestro holds a playbook library: proven procedures for jobs that recur.**
@@ -312,17 +386,29 @@ trap, the measurement and the fix, not "be careful with X".
 
 ## Before you finish
 
-One curl, and it is the difference between work that is tracked and work that
-only looks tracked:
+One read, and it is the difference between work that is tracked and work that
+only looks tracked. **Read the worklog itself, and check your entry has TEXT:**
 
 ```bash
 curl -s -H "Authorization: Bearer $K" "$B/api/tasks/<task_id>" | head -c 200
+curl -s -H "Authorization: Bearer $K" "$B/api/tasks/<task_id>/worklog" \
+  | python3 -c "import json,sys
+for e in json.load(sys.stdin).get('entries', []):
+    print(e['created_at'], e['kind'], repr(e.get('author')), len(e.get('body') or ''))"
 ```
 
 Your task's status and your final worklog entry should be visible **on the
 Worker**. If they are not, fix that before you end the session — an agent that
 recorded everything faithfully into a store nobody reads has, from the operator's
 side, recorded nothing.
+
+**"The entry exists" is not the check.** It was the check as this section used to
+be written, and an empty entry passes it: a row with the right kind and the right
+timestamp and no body satisfies every word of it. Measured 2026-11-02, which is
+why the command above prints the body LENGTH — a zero there is the `note`-instead-
+of-`body` trap in the API traps section, and the fix is to re-post with `body`.
+The `author` column is what tells your own entries apart from `system` status
+changes and `github` merge notices, so count only your own.
 
 **If you notice the drift growing, do not quietly fix it.** Append what you
 measured to task `maestro-store-drift-backfill` in the `colby-maestro` project.

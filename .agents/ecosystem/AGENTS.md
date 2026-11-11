@@ -195,6 +195,7 @@ and the rest follow the stack the way the chapters do:
 | `scripts/gh.mjs` | every repo | the GitHub entry point. Wraps the `gh-tools` CLI |
 | `scripts/tokens.mjs` | every repo | scaffolded from the `tokens` CLI, not vendored — one source, no drift |
 | `scripts/fix-d1-migrations.mjs` | Worker repos | makes Drizzle's SQL re-runnable on D1 |
+| `scripts/check-d1-not-inherited.mjs` | Worker repos | refuses a D1 `database_id` that belongs to another project — see below |
 | `scripts/reui.mjs` | frontend repos | pins the `@reui` registry so Pro blocks stop 401-ing |
 | `scripts/ui-guard.mjs` | frontend repos | fails the build on the frontend standard's checkable rules — see `AGENTS-frontend.md` |
 
@@ -205,6 +206,38 @@ into every shell and `GH_TOKEN` is the live one, so a helper that reads
 `process.env.GITHUB_TOKEN` picks the corpse. Import it (`import { gh, ghJson } from
 "./scripts/gh.mjs"`) or run it (`node scripts/gh.mjs pr-discussion . 20`). It is local
 only; there is no `gh-tools` on a CI runner.
+
+**`scripts/check-d1-not-inherited.mjs` is the one managed script the sync also runs
+itself.** Measured 2026-11-02: a template repo shipped core-guardian's real production
+`database_id`, `d555f8ce-77c9-4c82-be80-de95b8d9c003` — the Worker that watches
+Cloudflare spend and holds the switches to shut things down, at 123 tables and 400.2 MB.
+`database_name` is cosmetic; only the uuid binds, so five Workers shared that one
+database while each `wrangler.jsonc` claimed a name of its own, and every app scaffolded
+from the template ran its own Drizzle migrations into it. A server-side search found the
+uuid on 13 default branches.
+
+Two rules, because two different mistakes put a foreign uuid there: a known-foreign id
+is refused whatever the project is called, and any uuid-shaped id is refused while
+`package.json`'s `name` still matches `core-template*`. `--self-check` proves both can
+fail, then parses the repo's live `wrangler.jsonc` and says whether it did.
+
+**The sync does not edit `package.json`.** Deploy script names differ in every repo, and
+rewriting a repo's own manifest is a bigger power than refreshing a briefing. So the
+guard runs from the `agents-sync` workflow's own step instead, on every PR in every
+Worker repo, and `pull-agents` warns by name when no `package.json` script invokes it.
+Wire it anyway — the workflow catches a PR, not a deploy from a laptop:
+
+```json
+"check:d1":       "node scripts/check-d1-not-inherited.mjs",
+"migrate:remote": "node scripts/check-d1-not-inherited.mjs && …",
+"deploy":         "node scripts/check-d1-not-inherited.mjs && …",
+```
+
+Whether a repo is **carrying** it: `ls scripts/check-d1-not-inherited.mjs`, or
+`gh api -X GET search/code -f q='repo:OWNER/NAME filename:check-d1-not-inherited.mjs'`.
+Whether it is **running** it: the `agents-sync` run on the last PR has a
+`Check this repo's D1 binding is its own` step, and its log says which case it took.
+Whether a **deploy** would run it: `grep check-d1-not-inherited package.json`.
 
 **A script of yours is never silently replaced.** Only files carrying the
 `colby-ecosystem: managed script` banner are overwritten. A `scripts/gh.mjs` that is
@@ -217,6 +250,17 @@ is meant to retire.
 delimited managed block of pointers at the top. Everything outside that block is
 left byte-for-byte alone, so the effective briefing is **local `AGENTS.md` +
 colby-ecosystem's**, not one replacing the other.
+
+**These briefings are themselves generated — the rendered file is an artifact.**
+All 11 machine-wide targets, every `AGENTS*.md` above plus `~/.claude/CLAUDE.md`,
+are rendered from `generator/blocks/*.md` through `generator/generate.mjs` and
+`generator/targets.json` in colby-ecosystem. So a change to a briefing is a change
+to a **block**, and editing a rendered file fails the repo's own
+`briefings match their blocks` gate: `node generator/generate.mjs check` names the
+target `STALE` and CI goes red with no other failure. Measured twice —
+`decisions/2026-10-15-claude-pipeline-triage.md`, and again on 2026-11-02 in PR 128,
+that time by following `scripts/sync-agents`' premise that the home copy is the
+working copy. "End of session" below carries the loop to run.
 
 ## Installing it — `gh-tools agents-sync`
 
@@ -704,6 +748,52 @@ in the data, opposite in meaning.
   components is right — reporting a box UNHEALTHY forever for a role it never
   uses just trains people to ignore red. Derive it from a declaration, not from
   absence.)
+
+## A scan that read less than it claimed looks exactly like a clean one
+
+The rules above are about a check that runs and reports the wrong thing. This one
+is about a check that **covered less ground than you think** and reported clean
+for that reason. It is the same defect one step earlier, and it is harder to see,
+because the output of the partial scan and the complete one are the same
+sentence.
+
+**The number that makes the point:** "14 of 327 checkouts carry `.git` as a file"
+and "230 of 629" are both correct for the same fleet on the same day — the first
+counts top-level directories, the second recurses. Nothing was measured
+incorrectly. A reader handed either one cannot tell which, and the gap between
+them is 16x. Three rules follow, and all three are cheap:
+
+- **Never suppress a fetch's stderr.** `git fetch … 2>/dev/null` turns a network
+  failure into a stale ref that reads as fresh, and prints nothing at all. On
+  2026-11-02, port 22 to github.com was timing out on this machine while 443
+  answered; every suppressed fetch in that window silently measured whatever was
+  already on disk, and its caller reported a SHA. Fetch into a named ref and
+  compare it with what you had, so "unchanged" is a measurement rather than an
+  assumption.
+- **Enumerate a fleet from the server, not from disk.** One
+  `gh api search/code` over the default branches answered in a single call what
+  four passes over local checkouts got wrong — 4 repos, then 7, against 10. A
+  clone can be stale in either direction: its working tree behind its
+  `origin/main`, or its `origin/main` behind the remote. Read `total_count`
+  before the items and compare it with the rows you consumed; a filtered page one
+  reads exactly like a complete answer. A count of 26 came from page one of 277.
+- **Say which tree you measured, by ref.** A count with no SHA beside it cannot
+  be checked by the next reader, and that is how a branch 38 commits behind
+  `main` got quoted as the state of `main` — 143 violations for a tree that has
+  none.
+
+**Corollary for anything that scans:** print the roots it resolved and the bound
+it stopped at, so a partial scan is visible in its own output rather than only to
+someone who already knows the right answer — `scanned src/ (654) · no
+.ui-guard.json, roots defaulted to src, web · looked 3 deep for other frontends`.
+And a scanner that is never invoked prints nothing at all, so something has to
+assert that the check ran: 41 repos vendored `ui-guard.mjs` and 10 ran it.
+
+Two mechanical causes worth keeping, because both are one character wide:
+`[ -d "$repo/.git" ]` skips a linked worktree, whose `.git` is a file — use `-e`,
+then dedupe by `git rev-parse --git-common-dir`. And a pipeline's `$?` is the
+*last* command's, so `cmd 2>&1 | head; echo $?` reports `head` succeeding while
+`cmd` failed.
 
 ---
 
@@ -1443,6 +1533,26 @@ nobody reads is, from the operator's side, work nobody did.
 If yes to any: **present the proposals and ask Justin to review.** Do not edit
 `~/AGENTS.md` or a template unprompted from a session about something else — say
 what you would change and why, and let him decide.
+
+**When he approves one, edit the BLOCK, not the briefing.** `~/AGENTS.md`, the
+`AGENTS-*.md` topic files and `~/.claude/CLAUDE.md` are all rendered from
+`generator/blocks/*.md` in colby-ecosystem, so the home copy and the repo copy are
+both output. The loop, and `apply` is not the whole of it:
+
+```bash
+node generator/generate.mjs apply            # renders into generator/out/, writes nothing tracked
+cp generator/out/AGENTS.md AGENTS.md         # the render over each target it changed
+node generator/generate.mjs check            # must say 11 targets aligned
+```
+
+`apply` only ever writes `generator/out/` or the system temp directory, so the gate
+stays red until you copy the render over its target — step 2 is the one that is easy
+to miss, because step 1 prints `wrote AGENTS.md` either way. The repo's
+`briefings match their blocks` gate fails on a rendered-file edit and names the stale
+target. Two sessions have now lost a build to this, the second on 2026-11-02 (PR 128)
+by doing exactly what `scripts/sync-agents` describes. One more trap: a local checkout
+whose blocks are as stale as its rendered files reports every target aligned and
+proves nothing about `main`, so render against current `main`.
 
 **`backpass` is the evidence-backed version of step 1, and it is installed.** It reads
 the sessions that actually ran on this machine and proposes edits to `~/AGENTS.md`
